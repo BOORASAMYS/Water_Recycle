@@ -1,11 +1,21 @@
 import WaterSystem from './components/WaterSystem'
 import HouseGrid from './components/HouseGrid'
 import { useWaterSystem } from './hooks/useWaterSystem'
+import cyberLancers_Logo from './assets/CyberLancers_Logo.svg'
+import cdacLogo from './assets/cdac-logo.svg'
+
 import './App.css'
 
 export default function App() {
   const system = useWaterSystem()
-  const { houses, toggleConsumption, rechargeWallet, apiAttack, mainTankLevel, resetSystem } = system
+  const {
+    houses,
+    toggleConsumption,
+    rechargeWallet,
+    apiAttack,
+    mainTankLevel,
+    resetSystem,
+  } = system
 
   const house1 = houses[0]
   const restHouses = houses.slice(1)
@@ -13,25 +23,39 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="header-logo">
-          <svg width="52" height="52" viewBox="0 0 36 36" fill="none">
-            <circle cx="18" cy="18" r="17" fill="#eff6ff" stroke="#bfdbfe" strokeWidth="1.5" />
-            <path d="M18 4C18 4 8 15 8 22C8 27.5 12.5 32 18 32C23.5 32 28 27.5 28 22C28 15 18 4 18 4Z" fill="#0ea5e9" />
-            <path d="M18 10C18 10 13 17 13 22C13 24.8 15.2 27 18 27C20.8 27 23 24.8 23 22C23 17 18 10 18 10Z" fill="white" opacity="0.5" />
-          </svg>
-          <div className="header-text">
-            <h1>Water-Management</h1>
-          </div>
+        <div className="header-brand">
+          <h1>Water Management</h1>
         </div>
-        <div className="header-actions">
-          <button className="reset-all-btn" onClick={resetSystem}>
-            ↺ Reset All
+
+        <div className="header-controls">
+          <button className="nav-btn nav-btn-reset" onClick={resetSystem}>
+            Reset System
+          </button>
+
+          <div className="nav-logo-group" aria-label="Navbar logos">
+            <div className="nav-logo-badge" aria-label="CyberLancers logo">
+              <img src={cyberLancers_Logo} alt="CyberLancers" />
+            </div>
+            <div className="nav-logo-badge" aria-label="CDAC logo">
+              <img src={cdacLogo} alt="CDAC" />
+            </div>
+          </div>
+
+          <button className="nav-power-btn" type="button" aria-label="System power">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 3v8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+              <path
+                d="M7.8 5.8a8 8 0 1 0 8.4 0"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+              />
+            </svg>
           </button>
         </div>
       </header>
 
       <main className="app-main">
-        {/* ── ROW 1: Pipeline (with embedded controls) + House 1 ── */}
         <div className="top-section">
           <div className="pipeline-section">
             <WaterSystem system={system} />
@@ -49,8 +73,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* ── ROW 2: Houses 2, 3, 4 ── */}
-        <div className="bottom-section">
+          <div className="bottom-section">
           <HouseGrid
             system={system}
             houses={restHouses}

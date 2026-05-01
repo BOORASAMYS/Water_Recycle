@@ -5,12 +5,12 @@ from urllib.error import URLError
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
-from fastapi import FastAPI
+import fastapi
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 
-app = FastAPI(
+app = fastapi.FastAPI(
     title="Water Management ESP Bridge API",
     version="1.0.0",
     description="Receives house water data from the frontend and forwards it to ESP nodes.",

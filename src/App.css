@@ -13,7 +13,7 @@ html, body, #root {
 }
 
 body {
-  background: #f8fafc;
+  background: #edf4f6;
   color: #0f172a;
   font-family: 'Inter', sans-serif;
   font-size: 22px;
@@ -30,129 +30,147 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%);
+  background: linear-gradient(180deg, #edf4f6 0%, #e5eef1 100%);
 }
 
-/* ── Header / Navbar ── */
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 28px;
-  border-bottom: 4px solid;
-  border-image: linear-gradient(90deg, #0ea5e9, #6366f1, #a855f7) 1;
-  background: transparent;
+  gap: 18px;
+  width: 100%;
+  min-height: 72px;
+  padding: 14px 24px 14px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
   flex: 0 0 auto;
   z-index: 100;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
 }
 
-.header-logo {
+.header-brand {
   display: flex;
   align-items: center;
-  gap: 16px;
+  min-width: 0;
 }
 
-.header-text h1 {
+.header-brand h1 {
   font-family: 'Inter', sans-serif;
-  font-size: 30px;
+  font-size: 18px;
   font-weight: 800;
   color: #0f172a;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   line-height: 1;
+  white-space: nowrap;
 }
 
-.header-text h1 span {
-  color: #0ea5e9;
-}
-
-.header-actions {
+.header-controls {
   display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 12px;
-  align-items: center;
+  margin-left: auto;
 }
 
-.dashboard-metric {
-  display: flex;
-  flex-direction: column;
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
-  padding: 6px 16px;
-  border-radius: 12px;
-  margin-right: 12px;
+.nav-logo-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-btn,
+.nav-icon-btn,
+.nav-power-btn,
+.nav-logo-badge {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-}
-
-.metric-label {
-  font-size: 14px;
-  color: #64748b;
-  text-transform: uppercase;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  line-height: 1;
-  margin-bottom: 4px;
-}
-
-.metric-value {
-  font-size: 22px;
-  font-weight: 900;
-  color: #0f172a;
-  line-height: 1;
-}
-
-.drain-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  background: #ffffff;
-  color: #0f172a;
-  border: 2px solid #cbd5e1;
-  border-radius: 14px;
-  padding: 18px 30px;
+  border: 0;
+  border-radius: 10px;
   font-family: 'Inter', sans-serif;
-  font-size: 22px;
+  font-size: 12px;
   font-weight: 800;
-  min-height: 60px;
+  line-height: 1;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.nav-btn,
+.nav-icon-btn,
+.nav-power-btn {
   cursor: pointer;
-  transition: all 0.18s ease;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
-.drain-btn:hover {
-  background: #f1f5f9;
+.nav-btn:hover,
+.nav-icon-btn:hover,
+.nav-power-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
 }
 
-.drain-btn.active {
-  background: #0ea5e9;
-  color: #fff;
-  border-color: #0ea5e9;
+.nav-btn {
+  min-height: 34px;
+  padding: 0 18px;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
 }
 
-.reset-all-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
+.nav-btn-reset {
+  background: linear-gradient(180deg, #ff3b34 0%, #df231d 100%);
+}
+
+.nav-btn-automate {
+  background: linear-gradient(180deg, #3b6bff 0%, #2951db 100%);
+}
+
+.nav-btn-automate.is-active {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18), 0 10px 20px rgba(20, 46, 140, 0.28);
+}
+
+.nav-icon-btn,
+.nav-power-btn {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
+}
+
+.nav-icon-btn {
   background: #ffffff;
-  color: #0f172a;
-  border: 2px solid #fecaca;
-  border-radius: 14px;
-  padding: 18px 30px;
-  font-family: 'Inter', sans-serif;
-  font-size: 22px;
-  font-weight: 800;
-  min-height: 60px;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  color: #27446e;
 }
 
-.reset-all-btn:hover {
-  background: #ef4444;
-  color: #fff;
-  border-color: #ef4444;
+.nav-icon-btn svg,
+.nav-power-btn svg {
+  width: 20px;
+  height: 20px;
 }
 
-/* ── Pilferage Alert Banner ── */
+.nav-logo-badge {
+  height: 38px;
+  padding: 6px 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
+}
+
+.nav-logo-group .nav-logo-badge:first-child {
+  border-radius: 10px;
+}
+
+.nav-logo-group .nav-logo-badge:last-child {
+  border-radius: 10px;
+}
+
+.nav-logo-badge img {
+  display: block;
+  height: 28px;
+  width: auto;
+}
+
+.nav-power-btn {
+  background: linear-gradient(180deg, #ef4037 0%, #be1f1a 100%);
+  color: #ffffff;
+}
+
 .pilferage-alert-banner {
   background: #ef4444;
   color: white;
@@ -190,7 +208,6 @@ body {
   to { transform: translateY(0); }
 }
 
-/* ── Main ── */
 .app-main {
   display: flex;
   flex-direction: column;
@@ -201,20 +218,19 @@ body {
   overflow: hidden;
 }
 
-/* ── Top Section: Pipeline + House 1 ── */
 .top-section {
   display: flex;
   gap: 12px;
   align-items: stretch;
-  flex: 1 1 50%;
+  flex: 1 1 52%;
   min-height: 0;
 }
 
 .pipeline-section {
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #dfe8ec;
   border-radius: 14px;
-  padding: 18px;
+  padding: 12px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
   flex: 1 1 0;
   min-width: 0;
@@ -223,30 +239,30 @@ body {
   display: flex;
 }
 
-/* House 1 wrapper — match the width of one house in the bottom row.
-   Bottom row contains 3 houses + 2 gaps inside .app-main's padding (12px each side)
-   and a 12px gap between top-section items. So one house = (100vw - 24px padding - 24px gaps) / 3.
-   The pipeline-section consumes the rest minus one 12px gap. */
 .house1-wrapper {
-  flex: 0 0 calc((100vw - 24px - 24px) / 3);
-  min-width: 280px;
+  flex: 0 0 calc((100vw - 48px) / 3);
+  min-width: 300px;
   display: flex;
   min-height: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
 }
 
 .house1-wrapper .house-grid-wrapper {
-  background: #ffffff;
   border: 1px solid #e2e8f0;
+  background: #ffffff;
   border-radius: 14px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
 }
 
-/* ── Bottom Section: Houses 2, 3, 4 ── */
 .bottom-section {
   display: flex;
   gap: 12px;
   align-items: stretch;
-  flex: 1 1 50%;
+  flex: 1 1 48%;
   min-height: 0;
 }
 
@@ -259,47 +275,35 @@ body {
   min-height: 0;
 }
 
-/* Hide scrollbars across the app — single-frame layout */
-::-webkit-scrollbar { width: 0; height: 0; display: none; }
-* { scrollbar-width: none; -ms-overflow-style: none; }
-
-/* ─────────────────────────────────────────────────────────── */
-/* OVERFLOW FIX — keep everything within the viewport          */
-/* ─────────────────────────────────────────────────────────── */
-
-/* Remove the duplicate white card around House 1; HouseGrid already
-   renders its own .house-grid-wrapper card. */
-.house1-wrapper {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  padding: 0;
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
-.house1-wrapper .house-grid-wrapper {
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-/* Make House 1 the same width as one bottom-row house (3-col grid). */
-.house1-wrapper {
-  flex: 0 0 calc((100vw - 48px) / 3);
-  min-width: 300px;
+@media (max-width: 860px) {
+  .app-header {
+    flex-wrap: wrap;
+    padding: 12px;
+  }
+
+  .header-brand,
+  .header-controls {
+    width: 100%;
+  }
+
+  .header-brand h1 {
+    white-space: normal;
+    line-height: 1.2;
+  }
+
+  .header-controls {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }
-
-.pipeline-section {
-  padding: 12px;
-  overflow: hidden;
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.top-section { flex: 1 1 48%; }
-.bottom-section { flex: 1 1 52%; }
-
-/* Give the top row a bit more vertical room so the taller House-1 buttons
-   are never clipped, and trim the bottom row accordingly. */
-.top-section { flex: 1 1 52%; }
-.bottom-section { flex: 1 1 48%; }
