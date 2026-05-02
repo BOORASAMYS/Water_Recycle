@@ -4,12 +4,18 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 html, body, #root {
-  height: 100%;
+  min-height: 100%;
+  height: auto;
   width: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 body {
@@ -23,14 +29,133 @@ body {
 }
 
 .app {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  min-height: 100vh;
+  height: auto;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
   background: linear-gradient(180deg, #edf4f6 0%, #e5eef1 100%);
+}
+
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at center, rgba(95, 199, 219, 0.16) 0%, rgba(95, 199, 219, 0.08) 18%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(180deg, #f7f9fb 0%, #f3f5f7 100%);
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.splash-orb {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(80px);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.splash-orb-a {
+  width: 420px;
+  height: 420px;
+  background: rgba(122, 214, 222, 0.42);
+  animation: splash-float-a 7s ease-in-out infinite;
+}
+
+.splash-orb-b {
+  width: 620px;
+  height: 620px;
+  background: rgba(182, 223, 236, 0.3);
+  animation: splash-float-b 9s ease-in-out infinite;
+}
+
+.splash-card {
+  position: relative;
+  width: min(820px, calc(100vw - 32px));
+  padding: 34px 40px 30px;
+  border-radius: 28px;
+  border: 1px solid rgba(167, 191, 212, 0.45);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 28px 60px rgba(99, 139, 173, 0.18);
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+.splash-logos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  margin-bottom: 18px;
+}
+
+.splash-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.splash-logo img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.splash-logo-cyber img {
+  width: min(430px, 100%);
+  max-height: 92px;
+}
+
+.splash-logo-cdac img {
+  width: min(170px, 100%);
+  max-height: 92px;
+}
+
+.splash-logo-divider {
+  width: 1px;
+  align-self: stretch;
+  background: linear-gradient(180deg, rgba(211, 220, 229, 0) 0%, rgba(211, 220, 229, 1) 20%, rgba(211, 220, 229, 1) 80%, rgba(211, 220, 229, 0) 100%);
+}
+
+.splash-title {
+  margin: 0;
+  color: #112957;
+  font-size: clamp(28px, 3vw, 40px);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.splash-progress-track {
+  position: relative;
+  width: min(220px, 58vw);
+  height: 6px;
+  margin: 20px auto 22px;
+  border-radius: 999px;
+  background: #e6e8ec;
+  overflow: hidden;
+}
+
+.splash-progress-fill {
+  width: 44%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2d4fb4 0%, #178f83 100%);
+  animation: splash-load 10s linear forwards;
+  transform-origin: left center;
+}
+
+.splash-message {
+  margin: 0;
+  color: #233b68;
+  font-size: clamp(16px, 1.5vw, 18px);
+  font-weight: 500;
 }
 
 .app-header {
@@ -39,8 +164,8 @@ body {
   justify-content: space-between;
   gap: 18px;
   width: 100%;
-  min-height: 72px;
-  padding: 14px 24px 14px 20px;
+  min-height: 88px;
+  padding: 20px 24px 20px 20px;
   background: #ffffff;
   border-bottom: 1px solid #e2e8f0;
   flex: 0 0 auto;
@@ -56,7 +181,7 @@ body {
 
 .header-brand h1 {
   font-family: 'Inter', sans-serif;
-  font-size: 18px;
+  font-size: 26px;
   font-weight: 800;
   color: #0f172a;
   letter-spacing: -0.01em;
@@ -88,7 +213,7 @@ body {
   border: 0;
   border-radius: 10px;
   font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: 20px;
   font-weight: 800;
   line-height: 1;
   transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
@@ -108,14 +233,18 @@ body {
 }
 
 .nav-btn {
-  min-height: 34px;
-  padding: 0 18px;
+  min-height: 42px;
+  padding: 0 24px;
   color: #ffffff;
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
 }
 
 .nav-btn-reset {
   background: linear-gradient(180deg, #ff3b34 0%, #df231d 100%);
+}
+
+.nav-btn-drain {
+  background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
 }
 
 .nav-btn-automate {
@@ -128,8 +257,8 @@ body {
 
 .nav-icon-btn,
 .nav-power-btn {
-  width: 38px;
-  height: 38px;
+  width: 46px;
+  height: 46px;
   padding: 0;
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
 }
@@ -146,8 +275,8 @@ body {
 }
 
 .nav-logo-badge {
-  height: 38px;
-  padding: 6px 14px;
+  height: 46px;
+  padding: 8px 18px;
   background: #ffffff;
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
 }
@@ -162,13 +291,17 @@ body {
 
 .nav-logo-badge img {
   display: block;
-  height: 28px;
+  height: 32px;
   width: auto;
 }
 
 .nav-power-btn {
   background: linear-gradient(180deg, #ef4037 0%, #be1f1a 100%);
   color: #ffffff;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
 }
 
 .pilferage-alert-banner {
@@ -286,7 +419,51 @@ body {
   -ms-overflow-style: none;
 }
 
+@keyframes splash-load {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes splash-float-a {
+  0%, 100% {
+    transform: translate3d(-20px, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(24px, -18px, 0) scale(1.06);
+  }
+}
+
+@keyframes splash-float-b {
+  0%, 100% {
+    transform: translate3d(18px, 12px, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-22px, -16px, 0) scale(1.04);
+  }
+}
+
 @media (max-width: 860px) {
+  .splash-card {
+    padding: 28px 22px 24px;
+    border-radius: 22px;
+  }
+
+  .splash-logos {
+    gap: 16px;
+  }
+
+  .splash-logo-cyber img {
+    width: min(300px, 100%);
+  }
+
+  .splash-logo-cdac img {
+    width: min(124px, 100%);
+  }
+
   .app-header {
     flex-wrap: wrap;
     padding: 12px;
@@ -305,5 +482,20 @@ body {
   .header-controls {
     justify-content: flex-start;
     flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 560px) {
+  .splash-logos {
+    flex-direction: column;
+  }
+
+  .splash-logo-divider {
+    width: 100%;
+    height: 1px;
+  }
+
+  .splash-title {
+    letter-spacing: 0.04em;
   }
 }
