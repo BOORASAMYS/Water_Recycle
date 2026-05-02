@@ -1,5 +1,35 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './HouseGrid.css'
+import { fetchPilferageAlerts } from '../lib/waterApi'
+
+function usePilferageAlert(houseId) {
+  const [alert, setAlert] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function poll() {
+      try {
+        const data = await fetchPilferageAlerts()
+        if (!cancelled) {
+          const houseAlert = data.pilferage_alerts?.[houseId] ?? null
+          setAlert(houseAlert)
+        }
+      } catch {
+        // silently ignore fetch errors — no UI disruption
+      }
+    }
+
+    poll()
+    const id = setInterval(poll, 5000)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
+  }, [houseId])
+
+  return alert
+}
 
 const HOUSE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6']
 
@@ -10,6 +40,7 @@ function HouseCard({ house, onToggle, onRecharge, apiAttack, mainTankLevel }) {
   const isLowWallet = house.wallet < 20
   const canConsume = house.wallet > 0 && mainTankLevel > 5
   const led = house.consuming && canConsume ? 'green' : 'red'
+  const pilferageAlert = usePilferageAlert(house.id)
 
   return (
     <div className={`house-card ${apiAttack ? 'house-attack' : ''}`} style={{ '--house-color': color }}>
@@ -57,6 +88,11 @@ function HouseCard({ house, onToggle, onRecharge, apiAttack, mainTankLevel }) {
       </div>
 
       <div className="house-controls">
+        <div className={`pilferage-alert ${pilferageAlert?.pilferage_detected ? 'pilferage-active' : ''}`}>
+          ⚠️ {pilferageAlert?.pilferage_detected
+            ? `Pilferage Detected!${pilferageAlert.message ? ` — ${pilferageAlert.message}` : ''}`
+            : 'Pilferage Status: Normal'}
+        </div>
         <button
           className={`tap-btn ${house.consuming && canConsume ? 'tap-on' : 'tap-off'}`}
           onClick={() => onToggle(house.id)}

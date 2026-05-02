@@ -733,3 +733,29 @@
 
 /* House 1 single-column — keep same button sizing as the bottom row */
 .house-grid-single .house-svg { width: 72px; height: 64px; }
+
+/* Pilferage alert banner */
+.pilferage-alert {
+  border: 1.5px solid #cbd5e1;
+  background: #f8fafc;
+  color: #64748b;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 1.25rem ;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 8px;
+  transition: background 0.3s, border-color 0.3s, color 0.3s;
+}
+
+.pilferage-alert.pilferage-active {
+  background: #fef2f2;
+  border-color: #ef4444;
+  color: #b91c1c;
+  animation: pilferage-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pilferage-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+  50% { opacity: 0.75; box-shadow: 0 0 8px 3px rgba(239,68,68,0.25); }
+}

@@ -45,3 +45,11 @@ export async function syncPurificationData({ amountOfWaterPurified, purification
 
   return response.json()
 }
+
+export async function fetchPilferageAlerts() {
+  const response = await fetch(`${API_BASE_URL}/api/houses/pilferage/latest`)
+  if (!response.ok) {
+    throw new Error(`Pilferage fetch failed with status ${response.status}`)
+  }
+  return response.json()
+}
