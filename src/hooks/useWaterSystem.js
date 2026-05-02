@@ -8,7 +8,7 @@ const WATER_COST_PER_LITER = 5
 const FILL_RATE = 2 // ml per tick
 const CONSUMPTION_RATE = 1.5
 const MAIN_TANK_REFILL_START_PCT = 0.2
-const MAIN_TANK_REFILL_STOP_PCT = 0.85
+const MAIN_TANK_REFILL_STOP_PCT = 1.0
 
 let apiWarningShown = false
 
@@ -36,19 +36,24 @@ export function useWaterSystem() {
   const [autoMode, setAutoMode] = useState(true)
 
   const [houses, setHouses] = useState([
-    { id: 1, name: 'House 1', wallet: 75, consuming: false, consumed: 12.5, active: true },
-    { id: 2, name: 'House 2', wallet: 42, consuming: true, consumed: 28.0, active: true },
-    { id: 3, name: 'House 3', wallet: 18, consuming: false, consumed: 45.5, active: true },
-    { id: 4, name: 'House 4', wallet: 60, consuming: true, consumed: 8.0, active: true },
+    { id: 1, name: 'House 1', wallet: 75, consuming: false, consumed: 12.5, waterLevel: 18, active: true },
+    { id: 2, name: 'House 2', wallet: 42, consuming: true, consumed: 28.0, waterLevel: 26, active: true },
+    { id: 3, name: 'House 3', wallet: 18, consuming: false, consumed: 45.5, waterLevel: 12, active: true },
+    { id: 4, name: 'House 4', wallet: 60, consuming: true, consumed: 8.0, waterLevel: 22, active: true },
   ])
 
   const tickRef = useRef(null)
   const latestHousesRef = useRef(houses)
+  const mainTankRef = useRef(mainTankLevel)
   const latestPurificationRef = useRef({
     amountOfWaterPurified: totalPurified,
     purificationStatus: purificationActive ? 'ON' : 'OFF',
   })
+  const drainRef = useRef(null)
+  const drainInProgressRef = useRef(false)
+  const drainLockPumpP2Ref = useRef(false)
   const syncInFlightRef = useRef(false)
+  const backendSyncEnabledRef = useRef(true)
   const pilferageSound = useRef(null)
 
   const dismissPilferage = useCallback(() => {
@@ -102,20 +107,125 @@ export function useWaterSystem() {
     ))
   }, [])
 
+  const setPumpP2WithUserIntent = useCallback((value) => {
+    drainLockPumpP2Ref.current = false
+    setPumpP2M(prev => (typeof value === 'function' ? value(prev) : value))
+  }, [])
+
   const resetSystem = useCallback(() => {
     setReservoirLevel(1000)
     setPurificationLevel(0)
     setMainTankLevel(0)
+    // cancel any active drain
+    if (drainRef.current) {
+      clearInterval(drainRef.current)
+      drainRef.current = null
+      drainInProgressRef.current = false
+    }
+    drainLockPumpP2Ref.current = false
+    setPurificationActive(false)
+    setPumpR2P(false)
+    setPumpP2M(false)
+    setFlowRateR2P(0)
+    setFlowRateP2M(0)
     setPilferageAlert(false)
     setPilferageActive(false)
     setModbusAttack(false)
     setApiAttack(false)
-    setHouses(prev => prev.map(h => ({ ...h, wallet: 100, consuming: false, consumed: 0 })))
+    setHouses(prev => prev.map(h => ({ ...h, wallet: 100, consuming: false, consumed: 0, waterLevel: 0 })))
+    
+    // Turn motors on after 5 seconds
+    setTimeout(() => {
+      setPurificationActive(true)
+      setPumpR2P(true)
+    }, 5000)
+  }, [])
+
+  const triggerDrain = useCallback(() => {
+    if (drainInProgressRef.current || mainTankRef.current <= 0) return
+
+    const DRAIN_DURATION_MS = 7000
+    const DRAIN_TICK_MS = 500
+    const drainSteps = DRAIN_DURATION_MS / DRAIN_TICK_MS
+    const drainPerStep = mainTankRef.current / drainSteps
+    const houseDrainPerStep = latestHousesRef.current.map(house => ({
+      id: house.id,
+      drainPerStep: (house.waterLevel ?? 0) / drainSteps,
+    }))
+
+    if (drainRef.current) {
+      clearInterval(drainRef.current)
+    }
+
+    drainInProgressRef.current = true
+    drainLockPumpP2Ref.current = true
+    setPurificationActive(false)
+    setPumpR2P(false)
+    setPumpP2M(false)
+    setFlowRateR2P(0)
+    setFlowRateP2M(0)
+
+    let completedSteps = 0
+
+    drainRef.current = setInterval(() => {
+      completedSteps += 1
+
+      setMainTankLevel(prev => {
+        if (completedSteps >= drainSteps) return 0
+        return Math.max(0, prev - drainPerStep)
+      })
+
+      setHouses(prev => prev.map(house => {
+        const houseDrain = houseDrainPerStep.find(item => item.id === house.id)?.drainPerStep ?? 0
+
+        return {
+          ...house,
+          consuming: false,
+          waterLevel: completedSteps >= drainSteps
+            ? 0
+            : Math.max(0, (house.waterLevel ?? 0) - houseDrain),
+        }
+      }))
+
+      if (completedSteps >= drainSteps) {
+        clearInterval(drainRef.current)
+        drainRef.current = null
+        drainInProgressRef.current = false
+      }
+    }, DRAIN_TICK_MS)
+  }, [])
+
+  useEffect(() => {
+    // Auto-run reset system on initial mount
+    resetSystem()
+  }, [resetSystem])
+
+  useEffect(() => {
+    mainTankRef.current = mainTankLevel
+  }, [mainTankLevel])
+
+  useEffect(() => {
+    return () => {
+      if (drainRef.current) {
+        clearInterval(drainRef.current)
+        drainRef.current = null
+        drainInProgressRef.current = false
+      }
+    }
   }, [])
 
   // Simulation tick
   useEffect(() => {
     tickRef.current = setInterval(() => {
+      if (drainInProgressRef.current) {
+        setPumpR2P(false)
+        setPumpP2M(false)
+        setPurificationActive(false)
+        setFlowRateR2P(0)
+        setFlowRateP2M(0)
+        return
+      }
+
       setReservoirLevel(prev => {
         let level = prev
         if (pumpR2P && level > 0 && purificationLevel < PURIFICATION_CAPACITY) {
@@ -130,6 +240,13 @@ export function useWaterSystem() {
         } else {
           setFlowRateR2P(0)
         }
+        
+        // Stop pumps when main tank reaches 100%
+        if (mainTankLevel >= MAIN_TANK_CAPACITY) {
+          setPumpR2P(false)
+          setPurificationActive(false)
+        }
+        
         // Auto refill reservoir slowly
         if (autoMode && level < 200) level = Math.min(1000, level + 5)
         return level
@@ -141,6 +258,7 @@ export function useWaterSystem() {
         // doesn't rapidly toggle near the stop threshold.
         const mainPct = mainTankLevel / MAIN_TANK_CAPACITY
         const shouldFillMain =
+          !drainLockPumpP2Ref.current &&
           !modbusAttack &&
           level > 50 &&
           (pumpP2M ? mainPct < MAIN_TANK_REFILL_STOP_PCT : mainPct <= MAIN_TANK_REFILL_START_PCT)
@@ -162,11 +280,13 @@ export function useWaterSystem() {
         return level
       })
 
-      // House consumption
+      // House consumption (paused while drain in progress so drain effect is visible)
       setHouses(prev => prev.map(h => {
+        if (drainInProgressRef.current) return h
+
         if (!h.consuming || h.wallet <= 0 || mainTankLevel <= 0) return { ...h, consuming: h.wallet > 0 ? h.consuming : false }
         if (apiAttack) return h
-        
+
         // 1 unit of main tank = 1 Liter = Rs. 5
         // Consume 0.5 Liters per tick (so the tank doesn't drain too fast, 4 houses * 0.5 = 2.0 L/tick)
         const requestedUsage = 0.5
@@ -181,6 +301,7 @@ export function useWaterSystem() {
           ...h, 
           wallet: newWallet, 
           consumed: h.consumed + actualUsage, 
+          waterLevel: (h.waterLevel ?? 0) + actualUsage,
           consuming: newWallet > 0 
         }
       }))
@@ -195,7 +316,9 @@ export function useWaterSystem() {
       }
     }, 500)
 
-    return () => clearInterval(tickRef.current)
+    return () => {
+      clearInterval(tickRef.current)
+    }
   }, [pumpR2P, pumpP2M, purificationActive, modbusAttack, apiAttack, pilferageActive, autoMode, mainTankLevel, purificationLevel])
 
   useEffect(() => {
@@ -211,7 +334,7 @@ export function useWaterSystem() {
 
   useEffect(() => {
     const syncToBackend = () => {
-      if (syncInFlightRef.current) return
+      if (!backendSyncEnabledRef.current || syncInFlightRef.current) return
 
       syncInFlightRef.current = true
       Promise.all([
@@ -219,6 +342,7 @@ export function useWaterSystem() {
         syncPurificationData(latestPurificationRef.current),
       ])
         .catch(error => {
+          backendSyncEnabledRef.current = false
           logApiErrorOnce('backend data sync', error)
         })
         .finally(() => {
@@ -238,7 +362,7 @@ export function useWaterSystem() {
     mainTankLevel,
     purificationActive, setPurificationActive,
     pumpR2P, setPumpR2P,
-    pumpP2M, setPumpP2M,
+    pumpP2M, setPumpP2M: setPumpP2WithUserIntent,
     pilferageAlert, pilferageActive,
     modbusAttack, apiAttack,
     flowRateR2P, flowRateP2M,
@@ -250,6 +374,7 @@ export function useWaterSystem() {
     triggerPilferage,
     triggerModbusAttack,
     triggerApiAttack,
+    triggerDrain,
     rechargeWallet,
     toggleConsumption,
     resetSystem,

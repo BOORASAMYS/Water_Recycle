@@ -40,7 +40,6 @@ PURIFICATION_ESP_NODE = {"ip": "", "path": "/set"}
 
 latest_house_data: dict[int, dict[str, Any]] = {}
 latest_purification_data: dict[str, Any] = {}
-latest_pilferage_alerts: dict[int, dict[str, Any]] = {}
 
 
 def utc_now() -> str:
@@ -172,39 +171,6 @@ def send_to_esp(house: HouseWaterData) -> dict[str, Any]:
             "forwarded": False,
             "error": str(error),
         }
-
-
-class PilferageAlert(BaseModel):
-    house_id: int = Field(..., ge=1)
-    house_name: str
-    pilferage_detected: bool
-    message: str = ""
-
-
-@app.post("/api/houses/pilferage")
-def receive_pilferage_alert(alert: PilferageAlert) -> dict[str, Any]:
-    """Called by the ESP32 node when pilferage is detected for a house."""
-    received_at = utc_now()
-    latest_pilferage_alerts[alert.house_id] = {
-        **alert.model_dump(),
-        "received_at": received_at,
-    }
-    logger.info(
-        "Pilferage alert | house=%s | detected=%s | msg=%s",
-        alert.house_id,
-        alert.pilferage_detected,
-        alert.message,
-    )
-    return {"status": "ok", "received_at": received_at}
-
-
-@app.get("/api/houses/pilferage/latest")
-def get_pilferage_alerts() -> dict[str, Any]:
-    """Frontend polls this to get the latest pilferage status for all houses."""
-    return {
-        "status": "ok",
-        "pilferage_alerts": latest_pilferage_alerts,
-    }
 
 
 @app.get("/api/health")

@@ -46,10 +46,18 @@ export async function syncPurificationData({ amountOfWaterPurified, purification
   return response.json()
 }
 
-export async function fetchPilferageAlerts() {
-  const response = await fetch(`${API_BASE_URL}/api/houses/pilferage/latest`)
+export async function postDrainEvent(payload) {
+  const response = await fetch(`${API_BASE_URL}/api/drain`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+
   if (!response.ok) {
-    throw new Error(`Pilferage fetch failed with status ${response.status}`)
+    throw new Error(`Drain event failed with status ${response.status}`)
   }
+
   return response.json()
 }

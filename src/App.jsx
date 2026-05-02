@@ -15,6 +15,8 @@ const SPLASH_MESSAGES = [
 ]
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true)
+  const [messageIndex, setMessageIndex] = useState(0)
   const system = useWaterSystem()
   const {
     houses,
@@ -23,10 +25,8 @@ export default function App() {
     apiAttack,
     mainTankLevel,
     resetSystem,
-    triggerPilferage,
+    triggerDrain,
   } = system
-  const [showSplash, setShowSplash] = useState(true)
-  const [messageIndex, setMessageIndex] = useState(0)
 
   const house1 = houses[0]
   const restHouses = houses.slice(1)
@@ -104,7 +104,7 @@ export default function App() {
             Reset System
           </button>
 
-          <button className="nav-btn nav-btn-drain" onClick={triggerPilferage}>
+          <button className="nav-btn nav-btn-drain" onClick={triggerDrain}>
             Drain
           </button>
 

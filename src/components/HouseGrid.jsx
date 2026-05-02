@@ -1,49 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import './HouseGrid.css'
-import { fetchPilferageAlerts } from '../lib/waterApi'
-
-function usePilferageAlert(houseId) {
-  const [alert, setAlert] = useState(null)
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function poll() {
-      try {
-        const data = await fetchPilferageAlerts()
-        if (!cancelled) {
-          const houseAlert = data.pilferage_alerts?.[houseId] ?? null
-          setAlert(houseAlert)
-        }
-      } catch {
-        // silently ignore fetch errors — no UI disruption
-      }
-    }
-
-    poll()
-    const id = setInterval(poll, 5000)
-    return () => {
-      cancelled = true
-      clearInterval(id)
-    }
-  }, [houseId])
-
-  return alert
-}
 
 const HOUSE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6']
 
 function HouseCard({ house, onToggle, onRecharge, apiAttack, mainTankLevel }) {
   const [rechargeAmt, setRechargeAmt] = useState(50)
+  const [pilferageActive, setPilferageActive] = useState(false)
   const color = HOUSE_COLORS[house.id - 1]
   const walletPct = house.wallet
   const isLowWallet = house.wallet < 20
   const canConsume = house.wallet > 0 && mainTankLevel > 5
   const led = house.consuming && canConsume ? 'green' : 'red'
-  const pilferageAlert = usePilferageAlert(house.id)
 
   return (
-    <div className={`house-card ${apiAttack ? 'house-attack' : ''}`} style={{ '--house-color': color }}>
+    <div className={`house-card ${apiAttack ? 'house-attack' : ''} ${pilferageActive ? 'pilferage-active' : ''}`} style={{ '--house-color': color }}>
       <div className="house-icon-area">
         <svg width="120" height="106" viewBox="0 0 56 50" fill="none" className={`house-svg ${house.consuming && canConsume ? 'house-active' : ''}`}>
           <polygon points="28,2 52,20 4,20" fill={color} opacity="0.9" />
@@ -66,13 +36,12 @@ function HouseCard({ house, onToggle, onRecharge, apiAttack, mainTankLevel }) {
       <div className="house-info">
         <div className="house-name">{house.name}</div>
       </div>
-      
 
       <div className="wallet-section">
         <div className="wallet-header">
           <span className="wallet-label">Wallet</span>
           <span className={`wallet-amount ${isLowWallet ? 'wallet-low' : ''}`}>
-            Rs.{house.wallet.toFixed(1)}
+            ₹{house.wallet.toFixed(1)}
           </span>
         </div>
         <div className="wallet-bar-bg">
@@ -82,17 +51,20 @@ function HouseCard({ house, onToggle, onRecharge, apiAttack, mainTankLevel }) {
           />
         </div>
         <div className="wallet-meta">
-          <span>{house.consumed.toFixed(1)} L consumed</span>
-          <span>Rs.5/L</span>
+          <span>{(house.waterLevel ?? 0).toFixed(1)} L water</span>
+          <span>₹5/L</span>
         </div>
       </div>
 
       <div className="house-controls">
-        <div className={`pilferage-alert ${pilferageAlert?.pilferage_detected ? 'pilferage-active' : ''}`}>
-          ⚠️ {pilferageAlert?.pilferage_detected
-            ? `Pilferage Detected!${pilferageAlert.message ? ` — ${pilferageAlert.message}` : ''}`
-            : 'Pilferage Status: Normal'}
-        </div>
+        <button
+          type="button"
+          className={`pilferage-alert ${pilferageActive ? 'pilferage-active' : ''}`}
+          onClick={() => setPilferageActive((current) => !current)}
+          aria-pressed={pilferageActive}
+        >
+          ⚠️ Pilferage {pilferageActive ? 'ON' : 'OFF'}
+        </button>
         <button
           className={`tap-btn ${house.consuming && canConsume ? 'tap-on' : 'tap-off'}`}
           onClick={() => onToggle(house.id)}
@@ -108,10 +80,10 @@ function HouseCard({ house, onToggle, onRecharge, apiAttack, mainTankLevel }) {
             value={rechargeAmt}
             onChange={e => setRechargeAmt(Number(e.target.value))}
           >
-            <option value={10}>Rs.10</option>
-            <option value={25}>Rs.25</option>
-            <option value={50}>Rs.50</option>
-            <option value={100}>Rs.100</option>
+            <option value={10}>₹10</option>
+            <option value={25}>₹25</option>
+            <option value={50}>₹50</option>
+            <option value={100}>₹100</option>
           </select>
           <button
             className="recharge-btn"
