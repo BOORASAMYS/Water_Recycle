@@ -23,6 +23,7 @@ export default function App() {
     toggleConsumption,
     rechargeWallet,
     apiAttack,
+    isUiFrozen,
     mainTankLevel,
     resetSystem,
     triggerDrain,
@@ -79,8 +80,20 @@ export default function App() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!isUiFrozen) {
+      return undefined
+    }
+
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+
+    return undefined
+  }, [isUiFrozen])
+
   return (
-    <div className="app">
+    <div className={`app ${isUiFrozen ? 'app-frozen' : ''}`}>
       {showSplash && (
         <div className="splash-screen" role="status" aria-live="polite">
           <div className="splash-orb splash-orb-a" />
@@ -107,17 +120,26 @@ export default function App() {
         </div>
       )}
 
+      {isUiFrozen && !showSplash && (
+        <div className="ui-freeze-overlay" role="alert" aria-live="assertive">
+          <div className="ui-freeze-card">
+            <div className="ui-freeze-title">Reservoir is Empty</div>
+            <div className="ui-freeze-text">UI will be locked until the reservior is full.</div>
+          </div>
+        </div>
+      )}
+
       <header className="app-header">
         <div className="header-brand">
           <h1 style={{color:'sky-blue'}}>Water Management</h1>
         </div>
 
         <div className="header-controls">
-          <button className="nav-btn nav-btn-reset" onClick={resetSystem}>
+          <button className="nav-btn nav-btn-reset" onClick={resetSystem} disabled={isUiFrozen}>
             Reset System
           </button>
 
-          <button className="nav-btn nav-btn-drain" onClick={triggerDrain}>
+          <button className="nav-btn nav-btn-drain" onClick={triggerDrain} disabled={isUiFrozen}>
             Drain
           </button>
 
@@ -130,7 +152,7 @@ export default function App() {
             </div>
           </div>
 
-          <button className="nav-power-btn" type="button" aria-label="System power" onClick={shutdownSystem}>
+          <button className="nav-power-btn" type="button" aria-label="System power" onClick={shutdownSystem} disabled={isUiFrozen}>
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M12 3v8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
               <path
@@ -157,6 +179,7 @@ export default function App() {
               onRecharge={rechargeWallet}
               apiAttack={apiAttack}
               mainTankLevel={mainTankLevel}
+              uiFrozen={isUiFrozen}
               singleColumn
             />
           </div>
@@ -170,6 +193,7 @@ export default function App() {
             onRecharge={rechargeWallet}
             apiAttack={apiAttack}
             mainTankLevel={mainTankLevel}
+            uiFrozen={isUiFrozen}
           />
         </div>
       </main>

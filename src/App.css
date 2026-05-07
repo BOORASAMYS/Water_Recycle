@@ -232,6 +232,15 @@ body {
   filter: brightness(1.03);
 }
 
+.nav-btn:disabled,
+.nav-icon-btn:disabled,
+.nav-power-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+  filter: none;
+}
+
 .nav-btn {
   min-height: 42px;
   padding: 0 24px;
@@ -408,6 +417,41 @@ body {
   border-radius: 14px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
   min-height: 0;
+}
+
+.ui-freeze-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.36);
+  backdrop-filter: blur(4px);
+}
+
+.ui-freeze-card {
+  width: min(480px, calc(100vw - 40px));
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+  padding: 28px 32px;
+  text-align: center;
+}
+
+.ui-freeze-title {
+  color: #0f172a;
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.ui-freeze-text {
+  margin-top: 10px;
+  color: #334155;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 ::-webkit-scrollbar {

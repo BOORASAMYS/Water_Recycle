@@ -172,6 +172,7 @@ ESP_NODES = {
 
 PURIFICATION_ESP_NODE = {"ip": "192.168.0.8", "path": "/set"}
 MAIN_TANK_ESP_NODE = {"ip": "192.168.0.9", "path": "/tank"}
+MAIN_TANK_DRAIN_ESP_NODE = {"ip": "192.168.0.9", "path": "/drain"}
 PURIFIER_LOCK_ESP_NODE = {"ip": "192.168.0.11", "path": "/purifier"}
 
 latest_house_data: dict[int, dict[str, Any]] = {}
@@ -269,8 +270,8 @@ def build_house_rfid_url(ip: str, path: str) -> str:
     return build_esp_url(ip, path)
 
 
-def build_main_tank_url(ip: str, path: str) -> str:
-    drain_status = str(latest_purification_data.get("drain_status", "OFF")).upper()
+def build_main_tank_drain_url(ip: str, path: str, drain_status: str) -> str:
+    drain_status = str(drain_status).lower()
     query = urlencode({"drain": drain_status})
     return f"{build_esp_url(ip, path)}?{query}"
 
@@ -354,6 +355,46 @@ def send_purification_to_esp(payload: PurificationSyncRequest) -> dict[str, Any]
             }
     except URLError as error:
         logger.warning("Purification ESP error | url=%s | error=%s", url, error)
+        return {
+            "esp_ip": ip,
+            "esp_url": url,
+            "forwarded": False,
+            "error": str(error),
+        }
+
+
+def send_main_tank_drain_to_esp(drain_status: str) -> dict[str, Any]:
+    ip = MAIN_TANK_DRAIN_ESP_NODE["ip"].strip()
+
+    if not ip:
+        logger.info("Main tank drain ESP skipped | reason=ESP IP is blank")
+        return {
+            "esp_ip": "",
+            "forwarded": False,
+            "reason": "ESP IP is blank",
+        }
+
+    url = build_main_tank_drain_url(drain_status=drain_status, ip=ip, path=MAIN_TANK_DRAIN_ESP_NODE["path"])
+    logger.warning(
+        "Main tank drain sent | ip=%s | url=%s | drain=%s",
+        ip,
+        url,
+        str(drain_status).upper(),
+    )
+
+    try:
+        with urlopen(url, timeout=3) as response:
+            esp_response = response.read().decode("utf-8", errors="replace")
+            return {
+                "esp_ip": ip,
+                "esp_url": url,
+                "forwarded": True,
+                "method": "GET",
+                "status_code": response.status,
+                "esp_response": esp_response,
+            }
+    except URLError as error:
+        logger.warning("Main tank drain ESP error | url=%s | error=%s", url, error)
         return {
             "esp_ip": ip,
             "esp_url": url,
@@ -616,7 +657,7 @@ def poll_purifier_ui_lock() -> None:
             time.sleep(PURIFIER_LOCK_POLL_INTERVAL_SECONDS)
             continue
 
-        url = build_main_tank_url(ip, path)
+        url = build_esp_url(ip, path)
 
         try:
             with urlopen(url, timeout=2) as response:
@@ -679,7 +720,9 @@ def sync_shutdown_purification_state(drain_status: str) -> dict[str, Any]:
         payload.purification_status,
         payload.drain_status,
     )
-    return send_purification_to_esp(payload)
+    purification_result = send_purification_to_esp(payload)
+    send_main_tank_drain_to_esp(payload.drain_status)
+    return purification_result
 
 
 def set_house_shutdown_state(house_id: int, consuming: bool) -> None:
@@ -908,6 +951,7 @@ def sync_purification_data(payload: PurificationSyncRequest) -> dict[str, Any]:
         "status": "ok",
         "received_at": received_at,
         "esp_forwarding": send_purification_to_esp(payload),
+        "main_tank_drain_forwarding": send_main_tank_drain_to_esp(payload.drain_status),
     }
 
 

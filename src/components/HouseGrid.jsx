@@ -3,7 +3,7 @@ import './HouseGrid.css'
 
 const HOUSE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6']
 
-function HouseCard({ house, onToggle, onRecharge, apiAttack, mainTankLevel, pilferageActive, onPilferageToggle }) {
+function HouseCard({ house, onToggle, onRecharge, apiAttack, mainTankLevel, pilferageActive, onPilferageToggle, uiFrozen }) {
   const [rechargeAmt, setRechargeAmt] = useState(50)
   const color = HOUSE_COLORS[house.id - 1]
   const walletPct = house.wallet
@@ -13,8 +13,8 @@ function HouseCard({ house, onToggle, onRecharge, apiAttack, mainTankLevel, pilf
   const showPilferageButton = house.id === 1
   const noBalance = house.wallet <= 0
   const isTapDisabled = house.id === 1
-    ? pilferageActive || (!canConsume && !house.consuming)
-    : !canConsume && !house.consuming
+    ? uiFrozen || pilferageActive || (!canConsume && !house.consuming)
+    : uiFrozen || (!canConsume && !house.consuming)
 
   return (
     <div className={`house-card ${house.id === 1 ? 'house-1' : ''} ${apiAttack ? 'house-attack' : ''} ${pilferageActive ? 'pilferage-active' : ''}`} style={{ '--house-color': color }}>
@@ -67,6 +67,7 @@ function HouseCard({ house, onToggle, onRecharge, apiAttack, mainTankLevel, pilf
             className={`pilferage-alert ${pilferageActive ? 'pilferage-active' : ''}`}
             onClick={onPilferageToggle}
             aria-pressed={pilferageActive}
+            disabled={uiFrozen}
           >
             ⚠️ Pilferage {pilferageActive ? 'ON' : 'OFF'}
           </button>
@@ -86,6 +87,7 @@ function HouseCard({ house, onToggle, onRecharge, apiAttack, mainTankLevel, pilf
             className="recharge-input"
             value={rechargeAmt}
             onChange={e => setRechargeAmt(Number(e.target.value))}
+            disabled={uiFrozen}
           >
             <option value={10}>₹10</option>
             <option value={25}>₹25</option>
@@ -96,7 +98,7 @@ function HouseCard({ house, onToggle, onRecharge, apiAttack, mainTankLevel, pilf
             className="recharge-btn"
             style={{ '--c': color }}
             onClick={() => onRecharge(house.id, rechargeAmt)}
-            disabled={house.wallet >= 100}
+            disabled={uiFrozen || house.wallet >= 100}
           >
             + Recharge
           </button>
@@ -116,12 +118,13 @@ function TapIcon({ active }) {
   )
 }
 
-export default function HouseGrid({ system, houses: housesProp, onToggle, onRecharge, apiAttack: apiAttackProp, mainTankLevel: mainTankLevelProp, singleColumn = false }) {
+export default function HouseGrid({ system, houses: housesProp, onToggle, onRecharge, apiAttack: apiAttackProp, mainTankLevel: mainTankLevelProp, uiFrozen: uiFrozenProp, singleColumn = false }) {
   const houses = housesProp ?? system.houses
   const toggleConsumption = onToggle ?? system.toggleConsumption
   const rechargeWallet = onRecharge ?? system.rechargeWallet
   const apiAttack = apiAttackProp ?? system.apiAttack
   const mainTankLevel = mainTankLevelProp ?? system.mainTankLevel
+  const uiFrozen = uiFrozenProp ?? system.isUiFrozen
   const pilferageActive = system.pilferageActive
   const setPilferageActive = system.setPilferageActive
 
@@ -138,6 +141,7 @@ export default function HouseGrid({ system, houses: housesProp, onToggle, onRech
             mainTankLevel={mainTankLevel}
             pilferageActive={house.id === 1 ? pilferageActive : false}
             onPilferageToggle={() => setPilferageActive(current => !current)}
+            uiFrozen={uiFrozen}
           />
         ))}
       </div>

@@ -9,14 +9,14 @@ function PipeSegment({ flowing = false, attack = false }) {
   )
 }
 
-function SideTank({ title, level, maxLevel, side, low = false, showScale = true, valueLabel = null, onClick = null, active = false, badge = null }) {
+function SideTank({ title, level, maxLevel, side, low = false, showScale = true, valueLabel = null, onClick = null, active = false, badge = null, disabled = false }) {
   const pct = Math.max(0, Math.min(100, (level / maxLevel) * 100))
-  const clickable = !!onClick
+  const clickable = !!onClick && !disabled
 
   return (
     <div
-      className={`wm-tank-card wm-tank-card-${side} ${clickable ? 'is-clickable' : ''} ${active ? 'is-on' : ''}`}
-      onClick={onClick || undefined}
+      className={`wm-tank-card wm-tank-card-${side} ${clickable ? 'is-clickable' : ''} ${active ? 'is-on' : ''} ${disabled ? 'is-disabled' : ''}`}
+      onClick={clickable ? onClick : undefined}
       role={clickable ? 'button' : undefined}
       tabIndex={clickable ? 0 : undefined}
       onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
@@ -45,15 +45,17 @@ function SideTank({ title, level, maxLevel, side, low = false, showScale = true,
   )
 }
 
-function Pump({ label, active, attack = false, onClick }) {
+function Pump({ label, active, attack = false, onClick, disabled = false }) {
+  const clickable = !!onClick && !disabled
+
   return (
     <div
-      className={`wm-pump-block is-clickable`}
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick && onClick() } }}
-      title={`Click to turn ${label} ${active ? 'OFF' : 'ON'}`}
+      className={`wm-pump-block ${clickable ? 'is-clickable' : ''} ${disabled ? 'is-disabled' : ''}`}
+      onClick={clickable ? onClick : undefined}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick && onClick() } } : undefined}
+      title={clickable ? `Click to turn ${label} ${active ? 'OFF' : 'ON'}` : undefined}
     >
       <div className={`wm-pump ${active ? 'is-active' : ''} ${attack ? 'is-attack' : ''}`}>
         <div className="wm-pump-ring" />
@@ -77,15 +79,17 @@ function Pump({ label, active, attack = false, onClick }) {
   )
 }
 
-function PurificationTank({ active, onClick }) {
+function PurificationTank({ active, onClick, disabled = false }) {
+  const clickable = !!onClick && !disabled
+
   return (
     <div
-      className={`wm-purification-card is-clickable ${active ? 'is-on' : 'is-off'}`}
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick && onClick() } }}
-      title={`Click to turn purification ${active ? 'OFF' : 'ON'}`}
+      className={`wm-purification-card ${clickable ? 'is-clickable' : ''} ${active ? 'is-on' : 'is-off'} ${disabled ? 'is-disabled' : ''}`}
+      onClick={clickable ? onClick : undefined}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick && onClick() } } : undefined}
+      title={clickable ? `Click to turn purification ${active ? 'OFF' : 'ON'}` : undefined}
     >
       <div className="wm-purification-tank">
         <div className={`wm-purification-water ${active ? 'is-active' : ''}`} aria-hidden="true">
@@ -113,6 +117,7 @@ export default function WaterSystem({ system }) {
   const {
     purificationLevel,
     mainTankLevel,
+    isUiFrozen,
     purificationActive, setPurificationActive,
     pumpR2P, setPumpR2P,
     pumpP2M, setPumpP2M,
@@ -135,11 +140,12 @@ export default function WaterSystem({ system }) {
             showScale={false}
           />
           <PipeSegment flowing={pumpR2P} />
-          <Pump label="Pump 1" active={pumpR2P} onClick={() => setPumpR2P(v => !v)} />
+          <Pump label="Pump 1" active={pumpR2P} onClick={() => setPumpR2P(v => !v)} disabled={isUiFrozen} />
           <PipeSegment flowing={pumpR2P} />
           <PurificationTank
             active={purificationActive}
             onClick={() => setPurificationActive(v => !v)}
+            disabled={isUiFrozen}
           />
           <PipeSegment flowing={pumpP2M} attack={modbusAttack} />
           <Pump
@@ -147,6 +153,7 @@ export default function WaterSystem({ system }) {
             active={pumpP2M}
             attack={modbusAttack}
             onClick={() => setPumpP2M(v => !v)}
+            disabled={isUiFrozen}
           />
           <PipeSegment flowing={pumpP2M} attack={modbusAttack} />
           <SideTank
@@ -158,6 +165,7 @@ export default function WaterSystem({ system }) {
             valueLabel={`${Math.round((mainTankLevel / MAIN_TANK_CAPACITY) * 100)}%`}
             onClick={() => setPumpP2M(v => !v)}
             active={pumpP2M}
+            disabled={isUiFrozen}
           />
         </div>
       </div>

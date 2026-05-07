@@ -40,6 +40,7 @@ export function useWaterSystem() {
   const [drainActive, setDrainActive] = useState(false)
   const [systemShutdown, setSystemShutdown] = useState(false)
   const [amountOfWaterPurified, setAmountOfWaterPurified] = useState(0)
+  const [isUiFrozen, setIsUiFrozen] = useState(false)
 
   const [houses, setHouses] = useState([
     { id: 1, name: 'House 1', wallet: 0, consuming: false, consumed: 0, waterLevel: 0, active: true },
@@ -965,7 +966,14 @@ export function useWaterSystem() {
           mainTankFetchErrorShownRef.current = false
 
           const mainTank = mainTankData?.main_tank ?? {}
+          const purification = purificationData?.purification ?? {}
           const nextMainTankLevel = Number(mainTank.main_tank_level)
+          const remoteUiLockState = String(
+            purification.ui_lock_state ??
+            (purification.ui_lock_active ? 'ON' : 'OFF'),
+          ).toUpperCase()
+
+          setIsUiFrozen(remoteUiLockState === 'ON')
 
           if (Number.isFinite(nextMainTankLevel)) {
             mainTankRealtimeEnabledRef.current = true
@@ -1029,6 +1037,7 @@ export function useWaterSystem() {
     totalPurified,
     fillTimeMain,
     autoMode, setAutoMode,
+    isUiFrozen,
     houses,
     dismissPilferage,
     triggerPilferage,
