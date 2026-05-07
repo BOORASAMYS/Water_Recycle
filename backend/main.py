@@ -131,7 +131,7 @@ def send_plc_command(cmd: str) -> dict[str, Any]:
                 continue
 
             plc_connected = True
-            result = command_client.write_coil(addr, val, slave=PLC_UNIT_ID)
+            result = command_client.write_coil(addr, val, device_id=PLC_UNIT_ID)
             
             if result.isError():
                 logger.warning("PLC command failed (attempt %d/%d): %s - %s", attempt + 1, max_retries, cmd, result)
@@ -172,11 +172,19 @@ ESP_NODES = {
 
 PURIFICATION_ESP_NODE = {"ip": "192.168.0.8", "path": "/set"}
 MAIN_TANK_ESP_NODE = {"ip": "192.168.0.9", "path": "/tank"}
+PURIFIER_LOCK_ESP_NODE = {"ip": "192.168.0.11", "path": "/purifier"}
 
 latest_house_data: dict[int, dict[str, Any]] = {}
 last_forwarded_house_data: dict[int, dict[str, Any]] = {}
 latest_purification_data: dict[str, Any] = {}
 latest_main_tank_data: dict[str, Any] = {}
+latest_ui_lock_data: dict[str, Any] = {
+    "ui_lock_active": False,
+    "ui_lock_state": "OFF",
+    "ui_lock_raw": "OFF",
+    "ui_lock_received_at": None,
+    "source": "esp32",
+}
 rfid_recharge_events: list[dict[str, Any]] = []
 last_seen_rfid_counts: dict[int, int] = {}
 rfid_event_counter = 0
@@ -184,6 +192,7 @@ rfid_lock = threading.Lock()
 RFID_POLL_INTERVAL_SECONDS = 0.5
 RFID_RECHARGE_AMOUNT = 5.0
 MAIN_TANK_POLL_INTERVAL_SECONDS = 1
+PURIFIER_LOCK_POLL_INTERVAL_SECONDS = 0.2
 MAIN_TANK_SENSOR_MAX_PERCENT = 100.0
 MAIN_TANK_UI_CAPACITY = 500.0
 
@@ -260,6 +269,12 @@ def build_house_rfid_url(ip: str, path: str) -> str:
     return build_esp_url(ip, path)
 
 
+def build_main_tank_url(ip: str, path: str) -> str:
+    drain_status = str(latest_purification_data.get("drain_status", "OFF")).upper()
+    query = urlencode({"drain": drain_status})
+    return f"{build_esp_url(ip, path)}?{query}"
+
+
 def parse_main_tank_level(raw_value: str) -> float | None:
     normalized_value = raw_value.strip()
 
@@ -272,6 +287,19 @@ def parse_main_tank_level(raw_value: str) -> float | None:
         level = float(match.group())
 
     return max(0.0, level)
+
+
+def parse_on_off_state(raw_value: str) -> str | None:
+    normalized_value = raw_value.strip().upper()
+
+    if normalized_value in {"ON", "OFF"}:
+        return normalized_value
+
+    match = re.search(r"\b(ON|OFF)\b", normalized_value)
+    if match:
+        return match.group(1)
+
+    return None
 
 
 def convert_main_tank_percent_to_level(percent: float) -> tuple[float, float]:
@@ -579,6 +607,45 @@ def poll_main_tank_level() -> None:
         time.sleep(MAIN_TANK_POLL_INTERVAL_SECONDS)
 
 
+def poll_purifier_ui_lock() -> None:
+    while True:
+        ip = PURIFIER_LOCK_ESP_NODE.get("ip", "").strip()
+        path = PURIFIER_LOCK_ESP_NODE.get("path", "/purifier")
+
+        if not ip:
+            time.sleep(PURIFIER_LOCK_POLL_INTERVAL_SECONDS)
+            continue
+
+        url = build_main_tank_url(ip, path)
+
+        try:
+            with urlopen(url, timeout=2) as response:
+                raw_value = response.read().decode("utf-8", errors="replace").strip()
+        except URLError as error:
+            logger.debug("Purifier lock poll failed | url=%s | error=%s", url, error)
+            time.sleep(PURIFIER_LOCK_POLL_INTERVAL_SECONDS)
+            continue
+        except Exception as error:
+            logger.debug("Purifier lock poll error | url=%s | error=%s", url, error)
+            time.sleep(PURIFIER_LOCK_POLL_INTERVAL_SECONDS)
+            continue
+
+        lock_state = parse_on_off_state(raw_value)
+        if lock_state is not None:
+            latest_ui_lock_data.clear()
+            latest_ui_lock_data.update(
+                {
+                    "ui_lock_active": lock_state == "ON",
+                    "ui_lock_state": lock_state,
+                    "ui_lock_raw": raw_value,
+                    "ui_lock_received_at": utc_now(),
+                    "source": "esp32",
+                }
+            )
+
+        time.sleep(PURIFIER_LOCK_POLL_INTERVAL_SECONDS)
+
+
 def run_startup_drain_timer() -> None:
     """Hold the startup drain active for 15 seconds, then clear it."""
     global startup_drain_active
@@ -876,6 +943,7 @@ def get_latest_purification_data() -> dict[str, Any]:
     purification_payload = {
         **latest_purification_data,
         **latest_main_tank_data,
+        **latest_ui_lock_data,
     }
 
     return {
@@ -883,6 +951,16 @@ def get_latest_purification_data() -> dict[str, Any]:
         "purification": purification_payload,
         "esp_node": PURIFICATION_ESP_NODE,
         "main_tank_esp_node": MAIN_TANK_ESP_NODE,
+        "ui_lock_esp_node": PURIFIER_LOCK_ESP_NODE,
+    }
+
+
+@app.get("/api/ui-lock/status")
+def get_ui_lock_status() -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "ui_lock": latest_ui_lock_data,
+        "esp_node": PURIFIER_LOCK_ESP_NODE,
     }
 
 
@@ -1064,3 +1142,4 @@ async def startup_event():
     connect_plc()
     threading.Thread(target=poll_house_rfid_counts, name="rfid-poller", daemon=True).start()
     threading.Thread(target=poll_main_tank_level, name="main-tank-poller", daemon=True).start()
+    threading.Thread(target=poll_purifier_ui_lock, name="ui-lock-poller", daemon=True).start()
