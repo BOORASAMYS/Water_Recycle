@@ -7,6 +7,7 @@ export async function syncHouseData(houses) {
       house_name: house.name,
       amount_of_water_consumed: house.consumed,
       wallet_amount_present: house.wallet,
+      consuming: house.consuming,
     })),
   }
 
@@ -25,10 +26,11 @@ export async function syncHouseData(houses) {
   return response.json()
 }
 
-export async function syncPurificationData({ amountOfWaterPurified, purificationStatus }) {
+export async function syncPurificationData({ amountOfWaterPurified, purificationStatus, drainStatus }) {
   const payload = {
     amount_of_water_purified: amountOfWaterPurified,
     purification_status: purificationStatus,
+    drain_status: drainStatus,
   }
 
   const response = await fetch(`${API_BASE_URL}/api/purification/sync`, {
@@ -46,17 +48,77 @@ export async function syncPurificationData({ amountOfWaterPurified, purification
   return response.json()
 }
 
-export async function postDrainEvent(payload) {
-  const response = await fetch(`${API_BASE_URL}/api/drain`, {
+export async function fetchLatestPurificationData() {
+  const response = await fetch(`${API_BASE_URL}/api/purification/latest`, {
+    cache: 'no-store',
+  })
+
+  if (!response.ok) {
+    throw new Error(`Purification fetch failed with status ${response.status}`)
+  }
+
+  return response.json()
+}
+
+export async function fetchLatestMainTankData() {
+  const response = await fetch(`${API_BASE_URL}/api/main-tank/latest`, {
+    cache: 'no-store',
+  })
+
+  if (!response.ok) {
+    throw new Error(`Main tank fetch failed with status ${response.status}`)
+  }
+
+  return response.json()
+}
+
+export async function fetchRfidRechargeEvents(afterEventId = 0) {
+  const response = await fetch(`${API_BASE_URL}/api/rfid/recharges?after_event_id=${afterEventId}`, {
+    cache: 'no-store',
+  })
+
+  if (!response.ok) {
+    throw new Error(`RFID recharge fetch failed with status ${response.status}`)
+  }
+
+  return response.json()
+}
+
+export async function fetchStartupDrainStatus() {
+  const response = await fetch(`${API_BASE_URL}/api/startup-drain/status`, {
+    cache: 'no-store',
+  })
+
+  if (!response.ok) {
+    throw new Error(`Startup drain status fetch failed with status ${response.status}`)
+  }
+
+  return response.json()
+}
+
+export async function requestSystemShutdown() {
+  const response = await fetch(`${API_BASE_URL}/api/system/shutdown`, {
+    method: 'POST',
+  })
+
+  if (!response.ok) {
+    throw new Error(`System shutdown failed with status ${response.status}`)
+  }
+
+  return response.json()
+}
+
+export async function openHouseTap(houseId, houseName = '') {
+  const response = await fetch(`${API_BASE_URL}/api/houses/tap`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ house_id: houseId, house_name: houseName }),
   })
 
   if (!response.ok) {
-    throw new Error(`Drain event failed with status ${response.status}`)
+    throw new Error(`Tap open request failed with status ${response.status}`)
   }
 
   return response.json()

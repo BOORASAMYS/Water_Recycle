@@ -26,6 +26,7 @@ export default function App() {
     mainTankLevel,
     resetSystem,
     triggerDrain,
+    shutdownSystem,
   } = system
 
   const house1 = houses[0]
@@ -66,6 +67,18 @@ export default function App() {
     }
   }, [])
 
+  useEffect(() => {
+    const blockContextMenu = (event) => {
+      event.preventDefault()
+    }
+
+    window.addEventListener('contextmenu', blockContextMenu)
+
+    return () => {
+      window.removeEventListener('contextmenu', blockContextMenu)
+    }
+  }, [])
+
   return (
     <div className="app">
       {showSplash && (
@@ -83,7 +96,7 @@ export default function App() {
               </div>
             </div>
 
-            <h2 className="splash-title">SMART AGRICULTURE MODEL</h2>
+            <h2 className="splash-title">Water Management MODEL</h2>
 
             <div className="splash-progress-track" aria-hidden="true">
               <div className="splash-progress-fill" />
@@ -96,7 +109,7 @@ export default function App() {
 
       <header className="app-header">
         <div className="header-brand">
-          <h1>Water Management</h1>
+          <h1 style={{color:'sky-blue'}}>Water Management</h1>
         </div>
 
         <div className="header-controls">
@@ -117,7 +130,7 @@ export default function App() {
             </div>
           </div>
 
-          <button className="nav-power-btn" type="button" aria-label="System power">
+          <button className="nav-power-btn" type="button" aria-label="System power" onClick={shutdownSystem}>
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M12 3v8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
               <path

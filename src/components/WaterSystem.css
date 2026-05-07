@@ -3,7 +3,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 .water-management-diagram {
-  padding: 8px 56px 8px 8px;  /* extra right padding so Main Tank's right scale isn't clipped */
+  padding: 4px 48px 4px 4px;  /* extra right padding so Main Tank's right scale isn't clipped */
   height: 100%;
   width: 100%;
   display: flex;
@@ -83,13 +83,13 @@
 
 /* ── Side Tanks (Reservoir — left) ── */
 .wm-tank-card-left {
-  width: 170px;
+  width: 156px;
   margin-left: 0;
 }
 
 /* ── Main Tank (right) — narrower card with visible right-side scale ── */
 .wm-tank-card-right {
-  width: 170px;       /* tank body(100) + shell margin(10 each side) + scale room(~48px) */
+  width: 156px;       /* tank body + scale room */
   margin-left: 0;
   overflow: visible;  /* let the scale render outside if needed */
 }
@@ -99,7 +99,7 @@
 /* ── Shared tank shell ── */
 .wm-tank-shell {
   position: relative;
-  width: 140px;
+  width: 126px;
   margin: 0 auto;
   padding-top: 8px;
 }
@@ -110,8 +110,8 @@
 
 .wm-tank-body {
   position: relative;
-  width: 120px;
-  height: 210px;
+  width: 108px;
+  height: 184px;
   margin: 8px auto 0;
   border: 3px solid #94a3b8;
   border-radius: 12px 12px 8px 8px;
@@ -173,7 +173,7 @@
   transform: translate(-50%, -50%);
   z-index: 4;
   min-width: 56px;
-  padding: 6px 10px;
+  padding: 5px 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.84);
   color: #0f172a;
@@ -189,7 +189,7 @@
 .wm-scale {
   position: absolute;
   top: 16px;
-  height: 210px;
+  height: 184px;
   font-family: Arial, sans-serif;
   font-size: 16px;
   font-weight: 900;
@@ -298,48 +298,71 @@
 
 /* ── Pump Block ── */
 .wm-pump-block {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0;
-  width: 90px;
+  justify-content: center;
+  width: 96px;
+  height: 60px;
+  overflow: visible;
 }
 
 .wm-pump-label-bottom {
-  min-height: 48px;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-height: 40px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   font-size: 21px;
   font-weight: 900;
   text-align: center;
-  margin-top: 8px;
-  width: 100%;
+  margin-top: 0;
+  width: max-content;
+  min-width: 100%;
+  white-space: normal;
 }
 
 .wm-pump {
   position: relative;
-  width: 68px;
-  height: 68px;
+  width: 60px;
+  height: 60px;
+  --wm-pump-accent: #ef4444;
+  --wm-pump-accent-soft: #fecaca;
+  --wm-pump-blade-start: #ef4444;
+  --wm-pump-blade-end: #b91c1c;
+  --wm-pump-center-start: #fda4af;
+  --wm-pump-center-end: #b91c1c;
   filter: drop-shadow(0 2px 4px rgba(18,44,62,0.14));
 }
 
 .wm-pump-ring {
   position: absolute;
   inset: 0;
-  border: 3px solid #ef4444;
+  border: 3px solid var(--wm-pump-accent);
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 28%, rgba(255,255,255,0.95), rgba(255,255,255,0.65) 30%, rgba(255,255,255,0.16) 31%, rgba(255,255,255,0) 32%);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.72);
+  background:
+    radial-gradient(circle at 30% 28%, rgba(255,255,255,0.98), rgba(255,255,255,0.7) 28%, rgba(255,255,255,0.1) 29%, rgba(255,255,255,0) 30%),
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.95) 0%, var(--wm-pump-accent-soft) 62%, color-mix(in srgb, var(--wm-pump-accent) 78%, white) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.72),
+    0 6px 12px rgba(15, 23, 42, 0.12);
 }
 
 .wm-pump-housing {
   position: absolute;
   inset: 12px;
-  border: 1.5px solid #24313f;
+  border: 1.5px solid rgba(36, 49, 63, 0.55);
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #ffffff 0%, #eef2f6 52%, #cfd8e1 100%);
-  box-shadow: inset 0 1px 2px rgba(255,255,255,0.85), inset 0 -2px 3px rgba(36,49,63,0.12);
+  background: radial-gradient(circle at 35% 35%, #ffffff 0%, #eef6fb 54%, #d3dbe5 100%);
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,0.85),
+    inset 0 -2px 3px rgba(36,49,63,0.12);
 }
 
 .wm-pump-port {
@@ -348,9 +371,10 @@
   transform: translateY(-50%);
   width: 12px;
   height: 12px;
-  border: 3px solid #ef4444;
+  border: 3px solid var(--wm-pump-accent);
   border-left: 0;
   border-radius: 0 4px 4px 0;
+  background: linear-gradient(180deg, #ffffff, var(--wm-pump-accent-soft));
 }
 
 .wm-pump-port-left {
@@ -377,9 +401,11 @@
   width: 20px; height: 6px;
   margin-top: -3px;
   transform-origin: 0 50%;
-  background: linear-gradient(90deg, #101820, #465867);
+  background: linear-gradient(90deg, var(--wm-pump-blade-start), var(--wm-pump-blade-end));
   border-radius: 999px;
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.15),
+    0 1px 2px rgba(15, 23, 42, 0.18);
 }
 
 .blade-a { transform: rotate(0deg) translateX(3px); }
@@ -393,8 +419,10 @@
   width: 10px; height: 10px;
   margin: -5px 0 0 -5px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #5b6e7f, #14202b 72%);
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.2);
+  background: radial-gradient(circle at 35% 35%, var(--wm-pump-center-start), var(--wm-pump-center-end) 72%);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.3),
+    0 1px 2px rgba(15, 23, 42, 0.18);
 }
 
 .wm-pump.is-attack .wm-pump-ring,
@@ -402,9 +430,18 @@
   border-color: #b30000;
 }
 
+.wm-pump.is-active {
+  --wm-pump-accent: #0ea5e9;
+  --wm-pump-accent-soft: #dbeafe;
+  --wm-pump-blade-start: #38bdf8;
+  --wm-pump-blade-end: #0369a1;
+  --wm-pump-center-start: #7dd3fc;
+  --wm-pump-center-end: #075985;
+}
+
 /* ── Purification (Circular) Tank ── */
 .wm-purification-card {
-  width: 230px;
+  width: 204px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -413,8 +450,8 @@
 
 .wm-purification-tank {
   position: relative;
-  width: 210px;
-  height: 210px;
+  width: 180px;
+  height: 180px;
   border: 8px solid #6f7a86;
   border-radius: 50%;
   background:
@@ -698,15 +735,16 @@
 
 .wm-purification-label {
   text-align: center;
-  margin-top: 10px;
+  margin-top: 6px;
   font-family: 'Inter', sans-serif;
   font-size: 21px;
   font-weight: 800;
   color: #475569;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .wm-tank-card.is-clickable {
@@ -759,4 +797,31 @@
   justify-content: center;
   gap: 4px;
   flex-wrap: wrap;
+}
+
+@media (max-width: 1024px) {
+  .water-management-diagram {
+    padding: 8px 20px 12px 8px;
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+
+  .wm-diagram {
+    justify-content: flex-start;
+  }
+
+  .wm-flow-layout {
+    min-width: 860px;
+    padding: 0 8px;
+  }
+}
+
+@media (max-width: 767px) {
+  .water-management-diagram {
+    padding-right: 12px;
+  }
+
+  .wm-flow-layout {
+    min-width: 780px;
+  }
 }

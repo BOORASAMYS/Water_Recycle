@@ -12,10 +12,10 @@
 
 html, body, #root {
   min-height: 100%;
-  height: auto;
+  height: 100%;
   width: 100%;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 
 body {
@@ -31,12 +31,12 @@ body {
 .app {
   width: 100%;
   min-height: 100vh;
-  height: auto;
+  height: 100vh;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  overflow: hidden;
   background: linear-gradient(180deg, #edf4f6 0%, #e5eef1 100%);
 }
 
@@ -342,28 +342,28 @@ body {
 }
 
 .app-main {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
   flex: 1 1 auto;
   min-height: 0;
-  padding: 12px;
+  padding: 8px;
   overflow: hidden;
 }
 
 .top-section {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: stretch;
-  flex: 1 1 52%;
   min-height: 0;
+  height: 100%;
 }
 
 .pipeline-section {
   background: #ffffff;
   border: 1px solid #dfe8ec;
   border-radius: 14px;
-  padding: 12px;
+  padding: 8px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
   flex: 1 1 0;
   min-width: 0;
@@ -377,6 +377,7 @@ body {
   min-width: 300px;
   display: flex;
   min-height: 0;
+  height: 100%;
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -389,14 +390,15 @@ body {
   background: #ffffff;
   border-radius: 14px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
 }
 
 .bottom-section {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: stretch;
-  flex: 1 1 48%;
   min-height: 0;
+  height: 100%;
 }
 
 .bottom-section > .house-grid-wrapper {
@@ -497,5 +499,113 @@ body {
 
   .splash-title {
     letter-spacing: 0.04em;
+  }
+}
+
+@media (max-width: 1024px) {
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: 100%;
+    overflow-y: auto;
+  }
+
+  body {
+    overflow-y: auto;
+  }
+
+  .app {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .app-main {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow: visible;
+  }
+
+  .top-section,
+  .bottom-section {
+    height: auto;
+    min-height: auto;
+  }
+
+  .top-section {
+    flex-direction: column;
+  }
+
+  .pipeline-section,
+  .house1-wrapper,
+  .bottom-section > .house-grid-wrapper {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .house1-wrapper {
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 860px) {
+  .header-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .nav-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .nav-logo-group {
+    grid-column: 1 / -1;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .nav-power-btn {
+    justify-self: end;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    gap: 12px;
+  }
+
+  .header-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .nav-logo-group,
+  .nav-power-btn {
+    justify-self: stretch;
+  }
+
+  .nav-logo-group {
+    justify-content: space-between;
+  }
+
+  .nav-logo-badge {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 12px;
+  }
+
+  .nav-logo-badge img {
+    max-width: 100%;
+    object-fit: contain;
+  }
+
+  .pipeline-section,
+  .house1-wrapper .house-grid-wrapper,
+  .bottom-section > .house-grid-wrapper {
+    border-radius: 12px;
   }
 }

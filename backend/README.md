@@ -52,16 +52,16 @@ http://<esp-ip>/set?purified=<amount_of_water_purified>&status=<ON_OR_OFF>
 
 ```bash
 cd backend
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn main:app --reload --host 127.0.0.1 --port 8000
+py -3.12 -m pip install -r requirements.txt
+py -3.12 -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
+
+This uses the global Windows Python launcher instead of PlatformIO, so the backend runs from your system Python install.
 
 From the project root, you can also run:
 
 ```bash
-backend\.venv\Scripts\python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+py -3.12 -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 API docs:

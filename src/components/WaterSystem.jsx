@@ -121,7 +121,6 @@ export default function WaterSystem({ system }) {
     MAIN_TANK_CAPACITY,
   } = system
 
-  const purificationRunning = purificationActive && purificationLevel > 0
   const mainLow = (mainTankLevel / MAIN_TANK_CAPACITY) * 100 <= 20
 
   return (
@@ -139,7 +138,7 @@ export default function WaterSystem({ system }) {
           <Pump label="Pump 1" active={pumpR2P} onClick={() => setPumpR2P(v => !v)} />
           <PipeSegment flowing={pumpR2P} />
           <PurificationTank
-            active={purificationRunning}
+            active={purificationActive}
             onClick={() => setPurificationActive(v => !v)}
           />
           <PipeSegment flowing={pumpP2M} attack={modbusAttack} />

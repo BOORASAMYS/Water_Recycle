@@ -5,7 +5,7 @@
   background: #ffffff;
   border: 3px solid #94a3b8;
   border-radius: 12px;
-  padding: 12px;
+  padding: 8px;
   min-height: 0;
   min-width: 0;
   box-shadow: 0 2px 12px rgba(0,0,0,0.06);
@@ -40,7 +40,7 @@
 .house-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  gap: 8px;
   flex: 1;
   align-items: stretch;
 }
@@ -180,12 +180,25 @@
   padding: 14px 16px;
 }
 
+.house-card:not(.house-1) .wallet-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .wallet-header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   margin-bottom: 6px;
   min-height: 28px;
+}
+
+.house-card:not(.house-1) .wallet-header {
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0;
 }
 
 .wallet-label {
@@ -243,7 +256,8 @@
   flex-direction: column;
   gap: 8px;
   margin-top: 8px;
-  flex: 1;
+  flex: 0 0 auto;
+  margin-top: auto;
 }
 
 .tap-btn {
@@ -276,6 +290,12 @@
   color: #1e293b;
 }
 
+.tap-no-balance {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
 .tap-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -285,7 +305,7 @@
   display: flex;
   gap: 8px;
   align-items: stretch;
-  flex: 1;
+  flex: 0 0 auto;
 }
 
 /* Native <select> needs room for both the longest option text ("₹100")
@@ -309,6 +329,7 @@
   -webkit-appearance: none;
   cursor: pointer;
   min-height: 74px;
+  height: 74px;
   color: #0f172a;
 }
 
@@ -331,6 +352,7 @@
   cursor: pointer;
   transition: all 0.15s ease;
   min-height: 74px;
+  height: 74px;
 }
 
 .recharge-btn:hover {
@@ -610,8 +632,8 @@
 .house-grid { gap: 10px; }
 
 .house-card {
-  padding: 12px;
-  gap: 8px;
+  padding: 8px;
+  gap: 6px;
   border-width: 1.5px;
   border-radius: 12px;
 }
@@ -653,6 +675,7 @@
   font-size: 21px;
   padding: 10px 24px 10px 10px;
   min-height: 42px;
+  height: 42px;
   border-width: 1.5px;
   border-radius: 10px;
   background-position: right 8px center;
@@ -662,11 +685,12 @@
   font-size: 21px;
   padding: 10px 12px;
   min-height: 42px;
+  height: 42px;
   border-width: 1.5px;
   border-radius: 10px;
 }
 
-/* Single-column (House 1) sits in a tighter top-row card */
+/* Single-column (House 1) should use the same recharge sizing as the other houses */
 .house-grid-single { padding: 12px; }
 .house-grid-single .house-svg { width: 64px; height: 56px; }
 .house-grid-single .house-name { font-size: 21px; }
@@ -701,18 +725,40 @@
   font-size: 21px;
   padding: 12px 26px 12px 12px;
   min-height: 50px;
+  height: 50px;
 }
 
 .recharge-btn {
   font-size: 21px;
   padding: 12px 14px;
   min-height: 50px;
+  height: 50px;
 }
 
 /* House 1 single-column should match the bottom-row card sizing */
 .house-grid-single .house-svg { width: 80px; height: 70px; }
 .house-grid-single .house-name { font-size: 22px; }
 .house-grid-single .wallet-amount { font-size: 22px; }
+.house-grid-single .wallet-section { margin-top: 8px; }
+.house-grid-single .pilferage-alert,
+.house-grid-single .tap-btn,
+.house-grid-single .recharge-input,
+.house-grid-single .recharge-btn {
+  min-height: 62px;
+  height: 62px;
+}
+.house-grid-single .pilferage-alert,
+.house-grid-single .tap-btn,
+.house-grid-single .recharge-btn {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+.house-grid-single .tap-btn {
+  font-size: 21px;
+}
+.house-grid-single .pilferage-alert {
+  font-size: 1.25rem;
+}
 
 /* ─── Tweak v2: taller buttons with larger inner text ─── */
 .tap-btn {
@@ -724,6 +770,7 @@
 
 .recharge-input {
   min-height: 62px;
+  height: 62px;
   padding: 16px 28px 16px 14px;
   font-size: 21px;
   flex: 0 0 108px;
@@ -732,6 +779,7 @@
 
 .recharge-btn {
   min-height: 62px;
+  height: 62px;
   padding: 16px 16px;
   font-size: 21px;
 }
@@ -740,11 +788,15 @@
 .house-card { padding: 12px; gap: 8px; }
 .house-icon-area { padding: 0; }
 .house-svg { width: 66px; height: 58px; }
-.wallet-section { padding: 8px 10px; }
-.wallet-header { margin-bottom: 4px; }
-.wallet-bar-bg { margin-bottom: 4px; }
+ 
+.house-card {
+  justify-content: flex-start;
+}
+.wallet-section { padding: 6px 10px; }
+.wallet-header { margin-bottom: 2px; }
+.wallet-bar-bg { margin-bottom: 3px; }
 .wallet-meta { min-height: 16px; }
-.house-controls { gap: 8px; }
+.house-controls { gap: 6px; margin-top: 4px; }
 
 /* House 1 single-column — keep same button sizing as the bottom row */
 .house-grid-single .house-svg { width: 72px; height: 64px; }
@@ -761,7 +813,7 @@
   font-size: 1.25rem ;
   font-weight: 600;
   text-align: center;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   cursor: pointer;
   transition: background 0.3s, border-color 0.3s, color 0.3s;
 }
@@ -771,6 +823,21 @@
   border-color: #ef4444;
   color: #b91c1c;
   animation: pilferage-pulse 1.5s ease-in-out infinite;
+}
+
+.house-card.house-1 .pilferage-alert {
+  min-height: 62px;
+  padding: 16px 14px;
+  font-size: 1.4rem;
+}
+
+/* Keep every house tap button the same size */
+.tap-btn {
+  flex: 0 0 72px;
+  height: 72px;
+  min-height: 72px;
+  padding: 18px 20px;
+  font-size: 23px;
 }
 
 @keyframes pilferage-border-pulse {
@@ -785,4 +852,130 @@
 @keyframes pilferage-icon-pulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.02); }
+}
+
+@media (min-width: 1025px) {
+  .house-grid-single .house-card {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .house-grid-single .house-svg {
+    width: 64px;
+    height: 56px;
+  }
+
+  .house-grid-single .wallet-section {
+    margin-top: 0;
+    padding: 6px 10px;
+  }
+
+  .house-grid-single .wallet-header {
+    margin-bottom: 2px;
+    min-height: 18px;
+  }
+
+  .house-grid-single .wallet-bar-bg {
+    margin-bottom: 3px;
+    height: 8px;
+  }
+
+  .house-grid-single .wallet-meta {
+    min-height: 16px;
+  }
+
+  .house-grid-single .house-controls {
+    gap: 4px;
+    margin-top: 0;
+  }
+
+  .house-grid-single .pilferage-alert,
+  .house-grid-single .tap-btn,
+  .house-grid-single .recharge-input,
+  .house-grid-single .recharge-btn {
+    min-height: 50px;
+    height: 50px;
+  }
+
+  .house-grid-single .pilferage-alert,
+  .house-grid-single .tap-btn,
+  .house-grid-single .recharge-btn {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .house-grid-single .recharge-input {
+    flex: 0 0 96px;
+    min-width: 96px;
+    padding: 10px 24px 10px 10px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .house-grid-wrapper {
+    height: auto;
+    overflow: visible;
+  }
+
+  .house-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    align-items: stretch;
+  }
+
+  .house-grid.house-grid-1col {
+    grid-template-columns: 1fr !important;
+  }
+
+  .house-card {
+    min-width: 0;
+    height: auto;
+  }
+
+  .wallet-header,
+  .wallet-meta,
+  .recharge-row {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 767px) {
+  .house-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .house-controls {
+    margin-top: 0;
+  }
+
+  .recharge-row {
+    flex-wrap: wrap;
+  }
+
+  .recharge-input,
+  .recharge-btn {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .tap-btn,
+  .pilferage-alert,
+  .recharge-input,
+  .recharge-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .house-grid-wrapper {
+    padding: 10px;
+  }
+
+  .house-card {
+    overflow-wrap: anywhere;
+  }
+
+  .wallet-header,
+  .wallet-meta {
+    flex-wrap: wrap;
+  }
 }

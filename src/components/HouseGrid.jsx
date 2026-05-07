@@ -3,17 +3,21 @@ import './HouseGrid.css'
 
 const HOUSE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6']
 
-function HouseCard({ house, onToggle, onRecharge, apiAttack, mainTankLevel }) {
+function HouseCard({ house, onToggle, onRecharge, apiAttack, mainTankLevel, pilferageActive, onPilferageToggle }) {
   const [rechargeAmt, setRechargeAmt] = useState(50)
-  const [pilferageActive, setPilferageActive] = useState(false)
   const color = HOUSE_COLORS[house.id - 1]
   const walletPct = house.wallet
   const isLowWallet = house.wallet < 20
   const canConsume = house.wallet > 0 && mainTankLevel > 5
   const led = house.consuming && canConsume ? 'green' : 'red'
+  const showPilferageButton = house.id === 1
+  const noBalance = house.wallet <= 0
+  const isTapDisabled = house.id === 1
+    ? pilferageActive || (!canConsume && !house.consuming)
+    : !canConsume && !house.consuming
 
   return (
-    <div className={`house-card ${apiAttack ? 'house-attack' : ''} ${pilferageActive ? 'pilferage-active' : ''}`} style={{ '--house-color': color }}>
+    <div className={`house-card ${house.id === 1 ? 'house-1' : ''} ${apiAttack ? 'house-attack' : ''} ${pilferageActive ? 'pilferage-active' : ''}`} style={{ '--house-color': color }}>
       <div className="house-icon-area">
         <svg width="120" height="106" viewBox="0 0 56 50" fill="none" className={`house-svg ${house.consuming && canConsume ? 'house-active' : ''}`}>
           <polygon points="28,2 52,20 4,20" fill={color} opacity="0.9" />
@@ -57,22 +61,25 @@ function HouseCard({ house, onToggle, onRecharge, apiAttack, mainTankLevel }) {
       </div>
 
       <div className="house-controls">
+        {showPilferageButton && (
+          <button
+            type="button"
+            className={`pilferage-alert ${pilferageActive ? 'pilferage-active' : ''}`}
+            onClick={onPilferageToggle}
+            aria-pressed={pilferageActive}
+          >
+            ⚠️ Pilferage {pilferageActive ? 'ON' : 'OFF'}
+          </button>
+        )}
         <button
-          type="button"
-          className={`pilferage-alert ${pilferageActive ? 'pilferage-active' : ''}`}
-          onClick={() => setPilferageActive((current) => !current)}
-          aria-pressed={pilferageActive}
-        >
-          ⚠️ Pilferage {pilferageActive ? 'ON' : 'OFF'}
-        </button>
-        <button
-          className={`tap-btn ${house.consuming && canConsume ? 'tap-on' : 'tap-off'}`}
+          className={`tap-btn ${house.consuming && canConsume ? 'tap-on' : 'tap-off'}${noBalance && !house.consuming ? ' tap-no-balance' : ''}`}
           onClick={() => onToggle(house.id)}
-          disabled={!canConsume && !house.consuming}
+          disabled={isTapDisabled}
           style={{ '--c': color }}
+          title={noBalance && !house.consuming ? 'No balance — recharge to open tap' : undefined}
         >
           <TapIcon active={house.consuming && canConsume} />
-          {house.consuming && canConsume ? 'Close Tap' : 'Open Tap'}
+          {house.consuming && canConsume ? 'Close Tap' : noBalance ? 'No Balance' : 'Open Tap'}
         </button>
         <div className="recharge-row">
           <select
@@ -115,6 +122,8 @@ export default function HouseGrid({ system, houses: housesProp, onToggle, onRech
   const rechargeWallet = onRecharge ?? system.rechargeWallet
   const apiAttack = apiAttackProp ?? system.apiAttack
   const mainTankLevel = mainTankLevelProp ?? system.mainTankLevel
+  const pilferageActive = system.pilferageActive
+  const setPilferageActive = system.setPilferageActive
 
   return (
     <div className={`house-grid-wrapper ${singleColumn ? 'house-grid-single' : ''}`}>
@@ -127,6 +136,8 @@ export default function HouseGrid({ system, houses: housesProp, onToggle, onRech
             onRecharge={rechargeWallet}
             apiAttack={apiAttack}
             mainTankLevel={mainTankLevel}
+            pilferageActive={house.id === 1 ? pilferageActive : false}
+            onPilferageToggle={() => setPilferageActive(current => !current)}
           />
         ))}
       </div>
