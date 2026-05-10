@@ -39,8 +39,48 @@ PLC_HOST = "192.168.0.10"
 PLC_PORT = 502
 PLC_UNIT_ID = 0
 
+
 plc_client = ModbusTcpClient(PLC_HOST, port=PLC_PORT, timeout=3)
 plc_connected = False
+
+# --- PLC Keepalive Thread ---
+keepalive_interval = 5  # seconds (must be < PLC timeout)
+keepalive_thread = None
+keepalive_stop_event = threading.Event()
+
+def plc_keepalive_worker():
+    while not keepalive_stop_event.is_set():
+        try:
+            # Only send keepalive if any relay is ON
+            if any(
+                latest_house_data.get(hid, {}).get("consuming", False)
+                for hid in (1, 2, 3, 4)
+            ):
+                # Read a harmless coil (coil 0)
+                ensure_plc_connected()
+                if plc_connected:
+                    plc_client.read_coils(0, 1, unit=PLC_UNIT_ID)
+        except Exception as e:
+            logger.warning("PLC keepalive failed: %s", str(e))
+        keepalive_stop_event.wait(keepalive_interval)
+
+def start_plc_keepalive():
+    global keepalive_thread
+    if keepalive_thread is None or not keepalive_thread.is_alive():
+        keepalive_stop_event.clear()
+        keepalive_thread = threading.Thread(target=plc_keepalive_worker, daemon=True)
+        keepalive_thread.start()
+
+def stop_plc_keepalive():
+    keepalive_stop_event.set()
+    if keepalive_thread:
+        try:
+            keepalive_thread.join(timeout=2)
+        except Exception:
+            pass
+
+# Start keepalive on backend startup
+start_plc_keepalive()
 
 
 def reset_plc_connection() -> None:
@@ -191,6 +231,7 @@ last_seen_rfid_counts: dict[int, int] = {}
 rfid_event_counter = 0
 rfid_lock = threading.Lock()
 RFID_POLL_INTERVAL_SECONDS = 0.5
+last_sent_reservoir_state: str | None = None
 RFID_RECHARGE_AMOUNT = 5.0
 MAIN_TANK_POLL_INTERVAL_SECONDS = 1
 PURIFIER_LOCK_POLL_INTERVAL_SECONDS = 0.2
@@ -228,6 +269,11 @@ class PurificationSyncRequest(BaseModel):
     amount_of_water_purified: float = Field(..., ge=0)
     purification_status: str = Field(..., pattern="^(ON|OFF)$")    
     drain_status: str = Field('OFF', pattern="^(ON|OFF)$")
+
+
+class HouseDrainSignalRequest(BaseModel):
+    house_drain: str = Field(..., pattern="^(on|off)$")
+
 
 class PlcControlRequest(BaseModel):
     house_id: int = Field(..., ge=1)
@@ -312,12 +358,13 @@ def convert_main_tank_percent_to_level(percent: float) -> tuple[float, float]:
     return normalized_percent, ui_level
 
 
-def build_purification_esp_url(payload: PurificationSyncRequest, ip: str, path: str) -> str:
+def build_purification_esp_url(payload: PurificationSyncRequest, ip: str, path: str, reservoir: str = "off") -> str:
     query = urlencode(
         {
             "purified": round(payload.amount_of_water_purified, 2),
             "pump": payload.purification_status.lower(),
             "drain": payload.drain_status.lower(),
+            "reservoir": reservoir.lower(),
         }
     )
     return f"{build_esp_url(ip, path)}?{query}"
@@ -334,8 +381,9 @@ def send_purification_to_esp(payload: PurificationSyncRequest) -> dict[str, Any]
             "reason": "ESP IP is blank",
         }
 
-    url = build_purification_esp_url(payload, ip, PURIFICATION_ESP_NODE["path"])
-    logger.info("Purification ESP send | url=%s", url)
+    reservoir = latest_ui_lock_data.get("ui_lock_state", "OFF").lower()
+    url = build_purification_esp_url(payload, ip, PURIFICATION_ESP_NODE["path"], reservoir)
+    logger.info("Purification ESP send | reservoir=%s | url=%s", reservoir, url)
 
     try:
         with urlopen(url, timeout=3) as response:
@@ -355,6 +403,63 @@ def send_purification_to_esp(payload: PurificationSyncRequest) -> dict[str, Any]
             }
     except URLError as error:
         logger.warning("Purification ESP error | url=%s | error=%s", url, error)
+        return {
+            "esp_ip": ip,
+            "esp_url": url,
+            "forwarded": False,
+            "error": str(error),
+        }
+
+
+def build_purification_tap_url(payload: PurificationSyncRequest, ip: str, path: str, house_drain: str, reservoir: str = "off") -> str:
+    """Build purification ESP URL with house_drain and reservoir params for tap events."""
+    query = urlencode(
+        {
+            "purified": round(payload.amount_of_water_purified, 2),
+            "pump": payload.purification_status.lower(),
+            "drain": payload.drain_status.lower(),
+            "house_drain": house_drain.lower(),
+            "reservoir": reservoir.lower(),
+        }
+    )
+    return f"{build_esp_url(ip, path)}?{query}"
+
+
+def send_purification_tap_to_esp(payload: PurificationSyncRequest, house_drain: str) -> dict[str, Any]:
+    """Send purification data with house_drain ON/OFF to the purification tank ESP on tap events."""
+    ip = PURIFICATION_ESP_NODE["ip"].strip()
+
+    if not ip:
+        logger.info("Purification tap ESP skipped | reason=ESP IP is blank")
+        return {
+            "esp_ip": "",
+            "forwarded": False,
+            "reason": "ESP IP is blank",
+        }
+
+    reservoir = latest_ui_lock_data.get("ui_lock_state", "OFF").lower()
+    url = build_purification_tap_url(payload, ip, PURIFICATION_ESP_NODE["path"], house_drain, reservoir)
+    logger.info("Purification tap ESP send | house_drain=%s | reservoir=%s | url=%s", house_drain, reservoir, url)
+
+    try:
+        with urlopen(url, timeout=3) as response:
+            esp_response = response.read().decode("utf-8", errors="replace")
+            logger.info(
+                "Purification tap ESP response | house_drain=%s | status=%s | body=%s",
+                house_drain,
+                response.status,
+                esp_response,
+            )
+            return {
+                "esp_ip": ip,
+                "esp_url": url,
+                "forwarded": True,
+                "method": "GET",
+                "status_code": response.status,
+                "esp_response": esp_response,
+            }
+    except URLError as error:
+        logger.warning("Purification tap ESP error | url=%s | error=%s", url, error)
         return {
             "esp_ip": ip,
             "esp_url": url,
@@ -609,6 +714,7 @@ def poll_house_rfid_counts() -> None:
 
 
 def poll_main_tank_level() -> None:
+    global last_sent_reservoir_state
     while True:
         ip = MAIN_TANK_ESP_NODE.get("ip", "").strip()
         path = MAIN_TANK_ESP_NODE.get("path", "/tank")
@@ -617,7 +723,19 @@ def poll_main_tank_level() -> None:
             time.sleep(MAIN_TANK_POLL_INTERVAL_SECONDS)
             continue
 
-        url = build_esp_url(ip, path)
+        # Append reservoir state from PURIFIER_LOCK_ESP_NODE only when it changes
+        current_reservoir_state = latest_ui_lock_data.get("ui_lock_state", "OFF").lower()
+        if current_reservoir_state != last_sent_reservoir_state:
+            query = urlencode({"reservoir": current_reservoir_state})
+            url = f"{build_esp_url(ip, path)}?{query}"
+            last_sent_reservoir_state = current_reservoir_state
+            logger.info(
+                "Main tank poll | reservoir state changed | new=%s | url=%s",
+                current_reservoir_state,
+                url,
+            )
+        else:
+            url = build_esp_url(ip, path)
 
         try:
             with urlopen(url, timeout=2) as response:
@@ -759,26 +877,13 @@ def set_house_shutdown_state(house_id: int, consuming: bool) -> None:
 
 
 def run_shutdown_sequence() -> None:
+    """Frontend has already run the 15-second drain sequence.
+    This function only needs to sync the final OFF state and shut down the Pi.
+    """
     global shutdown_sequence_in_progress
 
-    logger.warning(
-        "SYSTEM SHUTDOWN | drain phase started | duration_seconds=%s",
-        SHUTDOWN_DRAIN_DURATION_SECONDS,
-    )
-
     try:
-        sync_shutdown_purification_state("ON")
-
-        for house_id in range(1, 5):
-            set_house_shutdown_state(house_id, True)
-
-        time.sleep(SHUTDOWN_DRAIN_DURATION_SECONDS)
-
-        logger.warning("SYSTEM SHUTDOWN | drain phase complete | sending OFF commands")
-
-        for house_id in range(1, 5):
-            set_house_shutdown_state(house_id, False)
-
+        logger.warning("SYSTEM SHUTDOWN | drain complete — syncing final state and shutting down Pi")
         sync_shutdown_purification_state("OFF")
         shutdown_raspberry_pi()
     finally:
@@ -877,6 +982,17 @@ def open_house_tap(request: TapOpenRequest) -> dict[str, Any]:
             "TAP BLOCKED | house=%s | wallet=%.2f | required=%.2f",
             house_id, current_wallet, TAP_COST_PER_OPEN_RUPEES,
         )
+        # Wallet reached zero - send house_drain=off to purification tank ESP
+        _blocked_purification_payload = PurificationSyncRequest(
+            amount_of_water_purified=max(
+                0.0,
+                float(latest_purification_data.get("amount_of_water_purified", 0.0) or 0.0),
+            ),
+            purification_status=latest_purification_data.get("purification_status", "OFF"),
+            drain_status=latest_purification_data.get("drain_status", "OFF"),
+        )
+        send_purification_tap_to_esp(_blocked_purification_payload, "off")
+        logger.info("TAP BLOCKED | house_drain=off sent to purification ESP | house=%s", house_id)
         return {
             "status": "blocked",
             "house_id": house_id,
@@ -917,6 +1033,22 @@ def open_house_tap(request: TapOpenRequest) -> dict[str, Any]:
     )
     esp_result = send_to_esp(house_snapshot)
 
+    # Forward to purification tank ESP with house_drain=on (tap is open)
+    purification_payload = PurificationSyncRequest(
+        amount_of_water_purified=max(
+            0.0,
+            float(latest_purification_data.get("amount_of_water_purified", 0.0) or 0.0),
+        ),
+        purification_status=latest_purification_data.get("purification_status", "OFF"),
+        drain_status=latest_purification_data.get("drain_status", "OFF"),
+    )
+    purification_esp_result = send_purification_tap_to_esp(purification_payload, "on")
+    logger.info(
+        "TAP OPEN | house_drain=on sent to purification ESP | house=%s | wallet=%.2f",
+        house_id,
+        new_wallet,
+    )
+
     return {
         "status": "ok",
         "house_id": house_id,
@@ -927,6 +1059,7 @@ def open_house_tap(request: TapOpenRequest) -> dict[str, Any]:
         "tap_still_open": tap_still_open,
         "received_at": received_at,
         "esp_forwarding": esp_result,
+        "purification_esp_forwarding": purification_esp_result,
     }
 
 
@@ -952,6 +1085,34 @@ def sync_purification_data(payload: PurificationSyncRequest) -> dict[str, Any]:
         "received_at": received_at,
         "esp_forwarding": send_purification_to_esp(payload),
         "main_tank_drain_forwarding": send_main_tank_drain_to_esp(payload.drain_status),
+    }
+
+
+@app.post("/api/purification/house-drain")
+def signal_house_drain(request: HouseDrainSignalRequest) -> dict[str, Any]:
+    """
+    Signal house_drain ON/OFF to the purification tank ESP when a UI tap is toggled.
+    This endpoint does NOT modify any house data, wallet, or consumed state.
+    It only forwards the house_drain flag alongside the current purification state.
+    """
+    payload = PurificationSyncRequest(
+        amount_of_water_purified=max(
+            0.0,
+            float(latest_purification_data.get("amount_of_water_purified", 0.0) or 0.0),
+        ),
+        purification_status=latest_purification_data.get("purification_status", "OFF"),
+        drain_status=latest_purification_data.get("drain_status", "OFF"),
+    )
+    result = send_purification_tap_to_esp(payload, request.house_drain)
+    logger.info(
+        "HOUSE DRAIN SIGNAL | house_drain=%s | forwarded=%s",
+        request.house_drain,
+        result.get("forwarded", False),
+    )
+    return {
+        "status": "ok",
+        "house_drain": request.house_drain,
+        "esp_forwarding": result,
     }
 
 
@@ -1134,10 +1295,29 @@ def plc_status() -> dict[str, Any]:
 
 def shutdown_raspberry_pi() -> None:
     logger.warning("SYSTEM SHUTDOWN | issuing Raspberry Pi shutdown command")
+    shutdown_script = (
+        "/sbin/shutdown -h now"
+        " || /usr/sbin/shutdown -h now"
+        " || shutdown -h now"
+        " || systemctl poweroff"
+        " || poweroff"
+        " || sudo -n /sbin/shutdown -h now"
+        " || sudo -n /usr/sbin/shutdown -h now"
+        " || sudo -n shutdown -h now"
+        " || sudo -n systemctl poweroff"
+        " || sudo -n poweroff"
+    )
+
     try:
-        subprocess.Popen(["sudo", "shutdown", "-h", "now"])
+        subprocess.Popen(
+            ["/bin/sh", "-c", shutdown_script],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        logger.warning("SYSTEM SHUTDOWN | shutdown command started | script=%s", shutdown_script)
     except Exception as error:
-        logger.error("SYSTEM SHUTDOWN | failed to issue shutdown command | error=%s", error)
+        logger.error("SYSTEM SHUTDOWN | failed to start shutdown script | error=%s", error)
 
 
 @app.post("/api/system/shutdown")

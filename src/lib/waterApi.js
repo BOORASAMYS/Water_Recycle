@@ -123,3 +123,19 @@ export async function openHouseTap(houseId, houseName = '') {
 
   return response.json()
 }
+
+export async function signalHouseDrain(houseDrain) {
+  const response = await fetch(`${API_BASE_URL}/api/purification/house-drain`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ house_drain: houseDrain }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`House drain signal failed with status ${response.status}`)
+  }
+
+  return response.json()
+}

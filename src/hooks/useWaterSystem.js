@@ -5,6 +5,7 @@ import {
   fetchRfidRechargeEvents,
   fetchStartupDrainStatus,
   requestSystemShutdown,
+  signalHouseDrain,
   syncHouseData,
   syncPurificationData,
 } from '../lib/waterApi'
@@ -75,6 +76,7 @@ export function useWaterSystem() {
   const postDrainMotorRestartTimerRef = useRef(null)
   const resetAutoRestartTimerRef = useRef(null)
   const shutdownSequenceTimeoutRef = useRef(null)
+  const shutdownInProgressRef = useRef(false)
   const postDrainSyncTimersRef = useRef([])
   const serverStartupDrainActiveRef = useRef(true) // blocked until backend clears it
   const initialDrainCompletedRef = useRef(false)
@@ -228,6 +230,12 @@ export function useWaterSystem() {
         console.warn('[API ERROR] immediate house sync failed; retrying on next sync.', error)
       })
 
+      // Signal house_drain to the purification ESP whenever a tap is toggled
+      const nextHouseConsuming = nextHouses.find(h => h.id === houseId)?.consuming ?? false
+      signalHouseDrain(nextHouseConsuming ? 'on' : 'off').catch(err => {
+        console.warn('[API] house_drain signal failed', err)
+      })
+
       return nextHouses
     })
   }, [updateHousesState])
@@ -246,6 +254,14 @@ export function useWaterSystem() {
     setReservoirLevel(1000)
     setPurificationLevel(0)
     setMainTankLevel(0)
+    // Reset purification amount to zero and sync to backend
+    setAmountOfWaterPurified(0)
+    amountOfWaterPurifiedRef.current = 0
+    syncPurificationNow({
+      amountOfWaterPurified: 0,
+      purificationStatus: 'OFF',
+      drainStatus: 'OFF',
+    })
     // cancel any active drain
     if (drainRef.current) {
       clearInterval(drainRef.current)
@@ -278,7 +294,7 @@ export function useWaterSystem() {
         setPumpP2M(true)
       }
     }, 3000)
-  }, [updateHousesState])
+  }, [updateHousesState, syncPurificationNow])
 
   const startInitialDrainSequence = useCallback(() => {
     if (initialDrainStartedRef.current || drainInProgressRef.current || systemShutdown) return
@@ -341,8 +357,22 @@ export function useWaterSystem() {
     if (systemShutdown || drainActive) return
 
     const SHUTDOWN_DRAIN_DURATION_MS = 15000
+    const DRAIN_TICK_MS = 500
+    const drainSteps = SHUTDOWN_DRAIN_DURATION_MS / DRAIN_TICK_MS
+    const houseDrainPerStep = latestHousesRef.current.map(house => ({
+      id: house.id,
+      drainPerStep: (house.waterLevel ?? 0) / drainSteps,
+    }))
 
-    setDrainActive(true)
+    shutdownInProgressRef.current = true
+    if (drainRef.current) {
+      clearInterval(drainRef.current)
+    }
+    if (shutdownSequenceTimeoutRef.current) {
+      clearTimeout(shutdownSequenceTimeoutRef.current)
+      shutdownSequenceTimeoutRef.current = null
+    }
+
     drainInProgressRef.current = true
     drainLockPumpP2Ref.current = true
     forceMainTankMotorAfterDrainRef.current = false
@@ -355,6 +385,7 @@ export function useWaterSystem() {
       purificationStatus: 'OFF',
       drainStatus: 'ON',
     })
+    setDrainActive(true)
     setPurificationActive(false)
     setPumpR2P(false)
     setPumpP2M(false)
@@ -372,53 +403,70 @@ export function useWaterSystem() {
       })
     }
 
-    requestSystemShutdown()
-      .then(() => {
-        shutdownSequenceTimeoutRef.current = setTimeout(() => {
-          shutdownSequenceTimeoutRef.current = null
-          setDrainActive(false)
-          drainInProgressRef.current = false
-          drainLockPumpP2Ref.current = true
-          forceMainTankMotorAfterDrainRef.current = false
-          setSystemShutdown(true)
-          syncPurificationNow({
-            purificationStatus: 'OFF',
-            drainStatus: 'OFF',
-          })
-          setPurificationActive(false)
-          setPumpR2P(false)
-          setPumpP2M(false)
-          setFlowRateR2P(0)
-          setFlowRateP2M(0)
-          updateHousesState(prev => prev.map(house => ({ ...house, consuming: false })))
+    // PLC relay-off and backend shutdown are handled together inside the setInterval
+    // completion block below — no separate setTimeout, so there is no race condition.
 
-          const houseMotorOffRequests = Array.from({ length: 4 }, (_, index) => {
-            const houseId = index + 1
-            return sendPlcCommand(houseId, 'off').catch(error => {
-              console.error(`Failed to turn off house ${houseId} motor before system shutdown:`, error)
-            })
-          })
+    let completedSteps = 0
 
-          Promise.allSettled(houseMotorOffRequests).catch(() => {})
-        }, SHUTDOWN_DRAIN_DURATION_MS)
-      })
-      .catch(error => {
-        console.error('Failed to request Raspberry Pi shutdown:', error)
-        setDrainActive(false)
+    drainRef.current = setInterval(() => {
+      completedSteps += 1
+
+      updateHousesState(prev => prev.map(house => {
+        const houseDrain = houseDrainPerStep.find(item => item.id === house.id)?.drainPerStep ?? 0
+        const nextWaterLevel = completedSteps >= drainSteps
+          ? 0
+          : Math.max(0, (house.waterLevel ?? 0) - houseDrain)
+        const nextConsumed = completedSteps >= drainSteps
+          ? Math.max(0, house.consumed - (house.waterLevel ?? 0))
+          : Math.max(0, house.consumed - houseDrain)
+
+        return {
+          ...house,
+          consuming: completedSteps < drainSteps,
+          waterLevel: nextWaterLevel,
+          consumed: nextConsumed,
+        }
+      }))
+
+      if (completedSteps >= drainSteps) {
+        clearInterval(drainRef.current)
+        drainRef.current = null
         drainInProgressRef.current = false
-        drainLockPumpP2Ref.current = false
+        drainLockPumpP2Ref.current = true
         forceMainTankMotorAfterDrainRef.current = false
+        if (postDrainMotorRestartTimerRef.current) {
+          clearTimeout(postDrainMotorRestartTimerRef.current)
+          postDrainMotorRestartTimerRef.current = null
+        }
+
+        // Turn off all house PLC relays — drain is complete.
+        // Doing this here (not in a separate setTimeout) guarantees these OFF commands
+        // always run before requestSystemShutdown(), with no race condition.
+        for (let houseId = 1; houseId <= 4; houseId++) {
+          sendPlcCommand(houseId, 'off').catch(error => {
+            console.error(`Failed to turn off house ${houseId} motor after shutdown drain:`, error)
+          })
+        }
+
+        setDrainActive(false)
+        setSystemShutdown(true)
+        syncPurificationNow({
+          amountOfWaterPurified: amountOfWaterPurifiedRef.current,
+          purificationStatus: 'OFF',
+          drainStatus: 'OFF',
+        })
         setPurificationActive(false)
         setPumpR2P(false)
         setPumpP2M(false)
         setFlowRateR2P(0)
         setFlowRateP2M(0)
         updateHousesState(prev => prev.map(house => ({ ...house, consuming: false })))
-        syncPurificationNow({
-          purificationStatus: 'OFF',
-          drainStatus: 'OFF',
+
+        requestSystemShutdown().catch(error => {
+          console.error('Failed to request Raspberry Pi shutdown:', error)
         })
-      })
+      }
+    }, DRAIN_TICK_MS)
   }, [clearPostDrainSyncTimers, drainActive, sendPlcCommand, syncPurificationNow, systemShutdown, updateHousesState])
 
   const triggerDrain = useCallback(() => {
@@ -484,13 +532,18 @@ export function useWaterSystem() {
 
       updateHousesState(prev => prev.map(house => {
         const houseDrain = houseDrainPerStep.find(item => item.id === house.id)?.drainPerStep ?? 0
+        const nextWaterLevel = completedSteps >= drainSteps
+          ? 0
+          : Math.max(0, (house.waterLevel ?? 0) - houseDrain)
+        const nextConsumed = completedSteps >= drainSteps
+          ? Math.max(0, house.consumed - (house.waterLevel ?? 0))
+          : Math.max(0, house.consumed - houseDrain)
 
         return {
           ...house,
           consuming: completedSteps < drainSteps, // keep taps open while draining
-          waterLevel: completedSteps >= drainSteps
-            ? 0
-            : Math.max(0, (house.waterLevel ?? 0) - houseDrain),
+          waterLevel: nextWaterLevel,
+          consumed: nextConsumed,
         }
       }))
 
@@ -615,6 +668,16 @@ export function useWaterSystem() {
       }
 
       if (systemShutdown) {
+        forceMainTankMotorAfterDrainRef.current = false
+        setPumpR2P(false)
+        setPumpP2M(false)
+        setPurificationActive(false)
+        setFlowRateR2P(0)
+        setFlowRateP2M(0)
+        return
+      }
+
+      if (shutdownInProgressRef.current) {
         forceMainTankMotorAfterDrainRef.current = false
         setPumpR2P(false)
         setPumpP2M(false)
@@ -753,6 +816,11 @@ export function useWaterSystem() {
 
   useEffect(() => {
     houses.forEach(house => {
+      if (shutdownInProgressRef.current) {
+        previousHouseConsumptionRef.current.set(house.id, house.consuming)
+        return
+      }
+
       const previousConsuming = previousHouseConsumptionRef.current.get(house.id)
 
       if (previousConsuming === undefined) {
@@ -762,6 +830,7 @@ export function useWaterSystem() {
 
       if (previousConsuming !== house.consuming) {
         sendPlcCommand(house.id, house.consuming ? 'on' : 'off').catch(() => {})
+        signalHouseDrain(house.consuming ? 'on' : 'off').catch(() => {})
       }
 
       previousHouseConsumptionRef.current.set(house.id, house.consuming)

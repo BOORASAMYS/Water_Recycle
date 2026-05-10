@@ -131,7 +131,7 @@ export default function App() {
 
       <header className="app-header">
         <div className="header-brand">
-          <h1 style={{color:'sky-blue'}}>Water Management</h1>
+          <h1 style={{color:'sky-blue'}}>Urban Water Management</h1>
         </div>
 
         <div className="header-controls">
